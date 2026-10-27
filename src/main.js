@@ -24,7 +24,9 @@ const state = {
   elapsed: 0,
   muzzleUntil: 0,
   emptyMessageShown: false,
-  respawning: false
+  respawning: false,
+  enemySpawnTimer: 1.65,
+  totalEnemySpawns: 0
 };
 window.gameHealth = state.health;
 
@@ -46,6 +48,7 @@ document.body.prepend(renderer.domElement);
 
 const world = createWorld(renderer);
 const scene = world.scene;
+state.totalEnemySpawns = world.enemies.length;
 const camera = new THREE.PerspectiveCamera(76, window.innerWidth / window.innerHeight, .08, SETTINGS.renderDistance);
 camera.rotation.order = "YXZ";
 const player = new THREE.Group();
@@ -174,9 +177,12 @@ ui = createUI({
   onShopClose: closeShop
 });
 
+function countLivingEnemies() {
+  return world.enemies.reduce((count, enemy) => count + (!enemy.userData.dead && enemy.userData.health > 0 ? 1 : 0), 0);
+}
 function syncHud() {
   window.gameHealth = state.health;
-  ui.update(inventory, state.health, 1, state.playerKills + state.alliedKills, state.enemyKills);
+  ui.update(inventory, state.health, 1, state.playerKills + state.alliedKills, state.enemyKills, countLivingEnemies());
 }
 syncHud();
 
@@ -380,6 +386,7 @@ function damageSoldier(soldier, amount, point = null, sourceTeam = "enemy") {
   if (data.health <= 0) {
     data.dead = true;
     data.deathTime = 0;
+    data.corpseExpiresAt = state.elapsed + 7;
     if (data.weapon) data.weapon.rotation.z = .25;
     if (data.team === "enemy" && sourceTeam === "player") {
       inventory.rewardKill();
@@ -524,6 +531,94 @@ function respawnPlayer() {
   }, 1300);
 }
 
+function validEnemySpawnPoint(x, z) {
+  const edge = SETTINGS.worldSize / 2 - 18;
+  if (Math.abs(x) > edge || Math.abs(z) > edge) return false;
+  const playerDistance = Math.hypot(x - player.position.x, z - player.position.z);
+  if (playerDistance < 34 || playerDistance > 90) return false;
+
+  for (const obstacle of world.obstacles) {
+    const dx = x - obstacle.x;
+    const dz = z - obstacle.z;
+    if (dx * dx + dz * dz < (obstacle.radius + 2.6) ** 2) return false;
+  }
+  for (const box of world.collisionBoxes) {
+    const dx = x - box.x, dz = z - box.z;
+    const c = Math.cos(box.rotation), sn = Math.sin(box.rotation);
+    const lx = dx * c - dz * sn;
+    const lz = dx * sn + dz * c;
+    if (Math.abs(lx) < box.halfX + 2 && Math.abs(lz) < box.halfZ + 2) return false;
+  }
+  for (const unit of [...world.enemies, ...world.allies]) {
+    if (unit.userData.dead) continue;
+    if (Math.hypot(x - unit.position.x, z - unit.position.z) < 7) return false;
+  }
+  return true;
+}
+
+function spawnEnemyNearPlayer() {
+  const forwardX = -Math.sin(state.yaw);
+  const forwardZ = -Math.cos(state.yaw);
+  const rightX = Math.cos(state.yaw);
+  const rightZ = -Math.sin(state.yaw);
+  const edge = SETTINGS.worldSize / 2 - 20;
+  let chosen = null;
+
+  // Prefer a position beyond the player's view, in the direction of travel, but never inside a wall.
+  for (let attempt = 0; attempt < 55; attempt++) {
+    const distance = 42 + Math.random() * 24;
+    const lateral = (Math.random() - .5) * 58;
+    const x = THREE.MathUtils.clamp(
+      player.position.x + forwardX * distance + rightX * lateral, -edge, edge
+    );
+    const z = THREE.MathUtils.clamp(
+      player.position.z + forwardZ * distance + rightZ * lateral, -edge, edge
+    );
+    if (validEnemySpawnPoint(x, z)) { chosen = { x, z }; break; }
+  }
+
+  // If the forward lane is blocked by scenery, search a full ring around the player.
+  if (!chosen) {
+    for (let attempt = 0; attempt < 70; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 42 + Math.random() * 23;
+      const x = THREE.MathUtils.clamp(player.position.x + Math.cos(angle) * distance, -edge, edge);
+      const z = THREE.MathUtils.clamp(player.position.z + Math.sin(angle) * distance, -edge, edge);
+      if (validEnemySpawnPoint(x, z)) { chosen = { x, z }; break; }
+    }
+  }
+  if (!chosen) return null;
+
+  const enemy = world.spawnEnemy(chosen.x, chosen.z);
+  state.totalEnemySpawns += 1;
+  return enemy;
+}
+
+function cleanupExpiredCorpses() {
+  for (let i = world.enemies.length - 1; i >= 0; i--) {
+    const soldier = world.enemies[i];
+    if (!soldier.userData.dead || state.elapsed < (soldier.userData.corpseExpiresAt ?? Infinity)) continue;
+    world.actors.remove(soldier);
+    soldier.traverse((object) => {
+      if (object.geometry) object.geometry.dispose();
+    });
+    world.enemies.splice(i, 1);
+  }
+}
+
+function updateEnemyReinforcements(dt) {
+  cleanupExpiredCorpses();
+  state.enemySpawnTimer -= dt;
+  const active = countLivingEnemies();
+  const maxActiveEnemies = 12;
+  if (active < maxActiveEnemies && state.enemySpawnTimer <= 0) {
+    const spawned = spawnEnemyNearPlayer();
+    // If the battlefield is too crowded to find a safe spawn, retry soon.
+    state.enemySpawnTimer = spawned ? (active < 4 ? 1.15 : 1.85) : .65;
+    if (spawned && active < 4) toast("ENEMY REINFORCEMENTS APPROACHING", 1100);
+  }
+}
+
 function hideReloadVisual() {
   reloadArm.visible = false;
   magazineMesh.visible = false;
@@ -636,6 +731,7 @@ function animate() {
     }
     updateReloadVisual();
     updateAI(dt, world, player, { onNpcFire });
+    updateEnemyReinforcements(dt);
     if (state.respawning) state.fireHeld = false;
     hudTimer -= dt;
     if (hudTimer <= 0) { syncHud(); hudTimer = .12; }
@@ -661,7 +757,9 @@ if (new URLSearchParams(window.location.search).has("test")) {
         ready: true,
         weaponCount: inventory.items.length,
         enemyCount: world.enemies.length,
-        allyCount: world.allies.length,
+        activeEnemies: countLivingEnemies(),
+        totalEnemySpawns: state.totalEnemySpawns,
+        allyCount: world.allies.filter((unit) => !unit.userData.dead).length,
         occluderCount: world.occluders.length,
         collisionCount: world.obstacles.length + world.collisionBoxes.length,
         bonds: inventory.bonds,
@@ -675,6 +773,11 @@ if (new URLSearchParams(window.location.search).has("test")) {
         index, dead: unit.userData.dead,
         position: [unit.position.x, unit.position.y, unit.position.z]
       }));
+    },
+    spawnEnemyTest() {
+      const before = world.enemies.length;
+      const enemy = spawnEnemyNearPlayer();
+      return { spawned: Boolean(enemy), before, after: world.enemies.length, active: countLivingEnemies() };
     },
     reloadTest() {
       const weapon = inventory.current;
