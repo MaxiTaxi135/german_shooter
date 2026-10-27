@@ -182,10 +182,7 @@ window.addEventListener("keydown", (event) => {
     if (ui.isShopOpen()) closeShop();
     else showShop();
   }
-  if (event.code === "Digit1") equipHotkey(0);
-  if (event.code === "Digit2") equipHotkey(1);
-  if (event.code === "Digit3") equipHotkey(2);
-  if (event.code === "Digit4") equipHotkey(3);
+  if (/^Digit[1-8]$/.test(event.code)) equipHotkey(Number(event.code.slice(5)) - 1);
   if (event.code === "Space" && state.playing && state.onGround && !ui.isShopOpen()) {
     state.jumpVelocity = SETTINGS.playerJumpSpeed;
     state.onGround = false;
@@ -507,11 +504,11 @@ function hideReloadVisual() {
 function startReloadVisual() {
   const active = inventory.current;
   reloadArm.visible = true;
-  magazineMesh.visible = active.type === "smg" || active.type === "lmg";
-  if (active.type === "smg" || active.type === "lmg") {
+  magazineMesh.visible = ["smg", "mp40", "lmg", "assault", "mg"].includes(active.type);
+  if (["smg", "mp40", "lmg", "assault", "mg"].includes(active.type)) {
     magazineMesh.position.set(.22, -.55, -.64);
   }
-  for (const bullet of reloadBullets) bullet.visible = active.type !== "smg" && active.type !== "lmg";
+  for (const bullet of reloadBullets) bullet.visible = !["smg", "mp40", "lmg", "assault", "mg"].includes(active.type);
 }
 function updateReloadVisual() {
   if (!inventory.reloading) {
