@@ -60,7 +60,10 @@ const viewModelRoot = new THREE.Group();
 camera.add(viewModelRoot);
 let viewWeapon = null;
 function equipViewModel() {
-  if (viewWeapon) viewModelRoot.remove(viewWeapon);
+  if (viewWeapon) {
+    viewModelRoot.remove(viewWeapon);
+    viewWeapon.traverse((object) => { if (object.geometry) object.geometry.dispose(); });
+  }
   viewWeapon = createWeaponModel(inventory.current.type, world.materials, true);
   viewModelRoot.add(viewWeapon);
 }
@@ -235,7 +238,7 @@ function lineOfSightBlocked(x, z) {
   // Circumference colliders for trees, vehicles, crates, rubble, fences and sandbags.
   // Buildings use individual rotated wall colliders so their doorways are not sealed by an invisible circle.
   for (const obstacle of world.obstacles) {
-    if (obstacle.kind === "building") continue;
+    if (obstacle.kind === "building" || obstacle.kind === "crate" || obstacle.kind === "tank") continue;
     const dx = x - obstacle.x, dz = z - obstacle.z;
     const distanceSq = dx * dx + dz * dz;
     const radius = obstacle.radius + .62;
@@ -318,26 +321,64 @@ function movePlayer(dt) {
   viewModelRoot.position.z = THREE.MathUtils.damp(viewModelRoot.position.z, state.fireCooldown > .06 ? .045 : 0, 15, dt);
 }
 
-function damageSoldier(soldier, amount, point = null, fromPlayer = false) {
+function flashSoldier(soldier) {
+  const data = soldier.userData;
+  data.hitFlash = .13;
+  soldier.traverse((object) => {
+    if (!object.isMesh) return;
+    if (!object.userData.damageFlashOriginal) {
+      object.userData.damageFlashOriginal = object.material;
+      const original = object.material;
+      object.material = Array.isArray(original) ? original.map((material) => material.clone()) : original.clone();
+    }
+    const list = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of list) {
+      if (material.emissive) {
+        material.emissive.setHex(0x571b12);
+        material.emissiveIntensity = .68;
+      }
+    }
+  });
+}
+function updateSoldierDamageFlash(dt) {
+  for (const soldier of [...world.enemies, ...world.allies]) {
+    const data = soldier.userData;
+    if (!data.hitFlash || data.hitFlash <= 0) continue;
+    data.hitFlash -= dt;
+    if (data.hitFlash > 0) continue;
+    soldier.traverse((object) => {
+      if (!object.isMesh || !object.userData.damageFlashOriginal) return;
+      const flashMaterial = object.material;
+      object.material = object.userData.damageFlashOriginal;
+      const list = Array.isArray(flashMaterial) ? flashMaterial : [flashMaterial];
+      for (const material of list) material.dispose();
+      delete object.userData.damageFlashOriginal;
+    });
+  }
+}
+function damageSoldier(soldier, amount, point = null, sourceTeam = "enemy") {
   const data = soldier.userData;
   if (data.dead) return;
-  data.health -= amount;
-  data.hitFlash = .08;
+  data.health = Math.max(0, data.health - amount);
+  flashSoldier(soldier);
   if (point) effects.push(addImpact(scene, point, 0x9f4634, .24));
   if (data.health <= 0) {
-    data.health = 0;
     data.dead = true;
     data.deathTime = 0;
-    data.weapon?.rotation.z && (data.weapon.rotation.z = .25);
-    if (fromPlayer) {
+    if (data.weapon) data.weapon.rotation.z = .25;
+    if (data.team === "enemy" && sourceTeam === "player") {
       inventory.rewardKill();
       state.playerKills += 1;
       toast("ENEMY ELIMINATED  +35 WAR BONDS");
-    } else {
-      state.alliedKills += data.team === "enemy" ? 1 : 0;
+    } else if (data.team === "enemy" && sourceTeam === "ally") {
+      state.alliedKills += 1;
+      toast("ALLIED INFANTRY ELIMINATED AN ENEMY", 950);
+    } else if (data.team === "ally" && sourceTeam === "enemy") {
+      state.enemyKills += 1;
+      toast("ALLY DOWN", 900);
     }
     syncHud();
-  } else if (fromPlayer) {
+  } else if (sourceTeam === "player") {
     ui.hitmarker();
   }
 }
@@ -368,7 +409,7 @@ function playerShoot() {
   if (hit?.soldier) {
     const headshot = hit.point.y > hit.soldier.position.y + 1.72;
     const dealt = result.weapon.damage * (headshot ? 1.35 : 1);
-    damageSoldier(hit.soldier, dealt, hit.point, true);
+    damageSoldier(hit.soldier, dealt, hit.point, "player");
     if (headshot) toast("HEADSHOT", 850);
     else ui.hitmarker();
   } else if (hit?.environment) {
@@ -378,28 +419,65 @@ function playerShoot() {
 }
 
 function onNpcFire({ from, to, team, target, hitChance, damage }) {
-  const delta = new THREE.Vector3().subVectors(to, from);
-  const distance = delta.length();
-  const direction = delta.clone().normalize();
-  const ray = new THREE.Raycaster(from, direction, .15, Math.max(.15, distance - .3));
+  const baseDirection = new THREE.Vector3().subVectors(to, from);
+  const distance = baseDirection.length();
+  if (distance < .05) return;
+
+  // Accuracy is represented as angular dispersion, then every shot must intersect a real target hitbox.
+  const direction = baseDirection.normalize();
+  const accurate = Math.random() < hitChance;
+  const right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
+  if (right.lengthSq() < .001) right.set(1, 0, 0);
+  const up = new THREE.Vector3().crossVectors(right, direction).normalize();
+  const spread = distance * (accurate ? .0025 : .025 + Math.random() * .035);
+  const aimPoint = to.clone()
+    .addScaledVector(right, (Math.random() - .5) * spread)
+    .addScaledVector(up, (Math.random() - .5) * spread);
+  const shotDirection = aimPoint.sub(from).normalize();
+  const ray = new THREE.Raycaster(from, shotDirection, .08, distance + 1.5);
   scene.updateMatrixWorld(true);
-  const blockers = world.occluders.length ? ray.intersectObjects(world.occluders, false) : [];
-  const blockingHit = blockers.find((hit) => hit.distance < distance - .3);
-  const end = blockingHit ? blockingHit.point : to.clone();
+
+  const worldHits = world.occluders.length ? ray.intersectObjects(world.occluders, false) : [];
+  const blocker = worldHits.find((hit) => hit.distance > .15 && hit.distance < distance + .3);
+  let targetHit = null;
+
+  if (!blocker && target.isPlayer && team === "enemy" && !state.respawning) {
+    // Player is a capsule-like hit volume from hips to shoulders, not a free floating health value.
+    const center = player.position.clone().add(new THREE.Vector3(0, 1.02, 0));
+    const along = center.clone().sub(from).dot(shotDirection);
+    if (along >= .08 && along <= distance + .8) {
+      const closest = from.clone().addScaledVector(shotDirection, along);
+      const radius = .46;
+      if (closest.distanceToSquared(center) <= radius * radius) {
+        targetHit = { point: closest, distance: along, isPlayer: true };
+      }
+    }
+  } else if (!blocker && target.unit && !target.unit.userData.dead) {
+    // NPC-on-NPC shots use the target's visible body meshes as the actual hitbox.
+    const bodyHits = ray.intersectObject(target.unit, true);
+    if (bodyHits.length && bodyHits[0].distance <= distance + .8) {
+      targetHit = { point: bodyHits[0].point, distance: bodyHits[0].distance, unit: target.unit };
+    }
+  }
+
+  let end = from.clone().addScaledVector(shotDirection, Math.min(distance, 80));
+  if (blocker) end = blocker.point;
+  else if (targetHit) end = targetHit.point;
   effects.push(addTracer(scene, from, end, team === "ally" ? 0xe5cb8d : 0xce805e, .075));
-  if (blockingHit) {
-    effects.push(addImpact(scene, blockingHit.point, 0xb5a27d, .2));
+
+  if (blocker) {
+    effects.push(addImpact(scene, blocker.point, 0xb5a27d, .2));
     return;
   }
-  if (Math.random() > hitChance) return;
-  if (target.isPlayer) {
-    if (team !== "enemy" || state.respawning) return;
+  if (!targetHit) return;
+
+  if (targetHit.isPlayer) {
     state.health = Math.max(0, state.health - damage);
     ui.damageFlash();
     if (state.health <= 0) respawnPlayer();
     syncHud();
-  } else if (target.unit && !target.unit.userData.dead) {
-    damageSoldier(target.unit, damage, end, false);
+  } else if (targetHit.unit && !targetHit.unit.userData.dead) {
+    damageSoldier(targetHit.unit, damage, targetHit.point, team);
   }
 }
 function respawnPlayer() {
@@ -472,6 +550,7 @@ function updateReloadVisual() {
 }
 
 function updateEffects(dt) {
+  updateSoldierDamageFlash(dt);
   for (let i = effects.length - 1; i >= 0; i--) {
     const effect = effects[i];
     if (!effect) { effects.splice(i, 1); continue; }
