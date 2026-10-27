@@ -232,8 +232,10 @@ document.addEventListener("mousemove", (event) => {
 });
 
 function lineOfSightBlocked(x, z) {
-  // Physical proximity colliders for buildings, trees, vehicles, rubble and defensive positions.
+  // Circumference colliders for trees, vehicles, crates, rubble, fences and sandbags.
+  // Buildings use individual rotated wall colliders so their doorways are not sealed by an invisible circle.
   for (const obstacle of world.obstacles) {
+    if (obstacle.kind === "building") continue;
     const dx = x - obstacle.x, dz = z - obstacle.z;
     const distanceSq = dx * dx + dz * dz;
     const radius = obstacle.radius + .62;
@@ -241,20 +243,33 @@ function lineOfSightBlocked(x, z) {
       const oldDx = player.position.x - obstacle.x;
       const oldDz = player.position.z - obstacle.z;
       const oldDistanceSq = oldDx * oldDx + oldDz * oldDz;
-      // If the spawn or a collision put the player inside a collider, allow movement outward.
       if (!(oldDistanceSq < radius * radius && distanceSq > oldDistanceSq + .0001)) return true;
     }
   }
-  // Infantry have a body collider too, so the player cannot walk through the squad.
+  for (const box of world.collisionBoxes) {
+    const dx = x - box.x, dz = z - box.z;
+    const c = Math.cos(box.rotation), sin = Math.sin(box.rotation);
+    const localX = dx * c - dz * sin;
+    const localZ = dx * sin + dz * c;
+    const inside = Math.abs(localX) < box.halfX + .62 && Math.abs(localZ) < box.halfZ + .62;
+    if (inside) {
+      const oldDx = player.position.x - box.x, oldDz = player.position.z - box.z;
+      const oldX = oldDx * c - oldDz * sin;
+      const oldZ = oldDx * sin + oldDz * c;
+      const wasInside = Math.abs(oldX) < box.halfX + .62 && Math.abs(oldZ) < box.halfZ + .62;
+      const gettingOut = Math.abs(localX) + Math.abs(localZ) > Math.abs(oldX) + Math.abs(oldZ) + .0001;
+      if (!(wasInside && gettingOut)) return true;
+    }
+  }
+  // Infantry body hitboxes keep characters from overlapping the player.
   for (const soldier of [...world.enemies, ...world.allies]) {
     if (soldier.userData.dead) continue;
     const dx = x - soldier.position.x, dz = z - soldier.position.z;
     const distanceSq = dx * dx + dz * dz;
     if (distanceSq < .78 * .78) {
-      const oldDx = player.position.x - soldier.position.x;
-      const oldDz = player.position.z - soldier.position.z;
-      if (!(oldDx * oldDx + oldDz * oldDz < .78 * .78 &&
-            distanceSq > oldDx * oldDx + oldDz * oldDz + .0001)) return true;
+      const oldDx = player.position.x - soldier.position.x, oldDz = player.position.z - soldier.position.z;
+      const oldSq = oldDx * oldDx + oldDz * oldDz;
+      if (!(oldSq < .78 * .78 && distanceSq > oldSq + .0001)) return true;
     }
   }
   return false;
