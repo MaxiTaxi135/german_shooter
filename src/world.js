@@ -120,46 +120,139 @@ function makeMaterials() {
 export function createWeaponModel(type, materials, forView = false) {
   const group = new THREE.Group();
   const m = materials;
-  const length = type === "smg" ? 1.05 : type === "lmg" ? 1.48 : type === "sniper" ? 1.72 : 1.42;
+  const isRifle = type === "rifle" || type === "bolt" || type === "sniper";
+  const isHeavy = type === "lmg" || type === "mg";
+  const length = type === "smg" ? 1.12 : type === "mp40" ? 1.2 : type === "lmg" ? 1.55 :
+    type === "mg" ? 1.62 : type === "sniper" || type === "bolt" ? 1.78 : type === "assault" ? 1.35 : 1.45;
   const wood = m.woodDark;
-  const metal = m.steelDark;
-  addBox(group, 0, 0, length * .13, .18, .18, length * .67, wood);
-  addBox(group, 0, .06, length * .26, .22, .16, .36, metal);
-  addBox(group, 0, .05, length * .52, .105, .12, length * .63, m.steel);
-  const barrel = addCylinder(group, 0, .055, length * .91, .035, .043, .67, metal, 10);
+  const steel = m.steel;
+  const black = m.steelDark;
+  const stockLength = type === "smg" || type === "mp40" || type === "mg" ? .36 : .57;
+
+  // Stock and receiver proportions change by weapon family rather than reusing one generic shape.
+  addBox(group, 0, -.005, length * .12, type === "mg" ? .20 : .16, .17, length * stockLength, wood);
+  addBox(group, 0, .045, length * .40, type === "mg" ? .23 : .19, .19, type === "lmg" || type === "mg" ? .42 : .31, black);
+  addBox(group, 0, .09, length * .42, .17, .085, .34, steel);
+  addBox(group, 0, .155, length * .41, .08, .035, .13, black);
+  addBox(group, 0, -.105, length * .39, .105, .24, .16, wood);
+  addBox(group, 0, -.16, length * .29, .13, .31, .16, black);
+  // Trigger guard and trigger.
+  const guard = addMesh(new THREE.TorusGeometry(.075, .012, 5, 12, Math.PI), black, 0, -.12, length * .48, group);
+  guard.rotation.z = Math.PI;
+  addBox(group, 0, -.105, length * .49, .018, .075, .035, black);
+
+  // Barrel / muzzle assembly. Heavy weapons get a thick vented jacket.
+  const barrelStart = type === "smg" || type === "mp40" ? length * .62 : length * .60;
+  const barrelLength = type === "mg" ? .78 : type === "lmg" ? .72 : type === "sniper" || type === "bolt" ? .9 : .65;
+  const barrel = addCylinder(group, 0, .055, barrelStart + barrelLength * .47, type === "mg" ? .043 : .031,
+    type === "mg" ? .05 : .036, barrelLength, black, 12);
   barrel.rotation.x = Math.PI / 2;
-  addCylinder(group, 0, .055, length * 1.22, .044, .044, .08, metal, 10).rotation.x = Math.PI / 2;
-  addBox(group, 0, -.14, length * .38, .12, .28, .2, m.black);
-  addBox(group, 0, -.17, length * .16, .15, .36, .2, wood);
-  addBox(group, 0, .15, length * .7, .06, .05, .14, metal);
-  addBox(group, 0, .13, length * .88, .055, .055, .05, metal);
-  addBox(group, 0, -.01, length * .7, .12, .045, .08, metal);
-  if (type === "smg") {
-    addBox(group, 0, -.2, length * .48, .13, .3, .14, metal);
-    const mag = addCylinder(group, 0, -.32, length * .48, .075, .075, .25, metal, 12);
-    mag.rotation.x = Math.PI / 2;
-    addBox(group, 0, -.005, length * .27, .16, .12, .16, m.wood);
+  const muzzle = addCylinder(group, 0, .055, barrelStart + barrelLength, .04, .04, .085, steel, 12);
+  muzzle.rotation.x = Math.PI / 2;
+
+  // Front and rear sights.
+  addBox(group, 0, .125, barrelStart - .08, .055, .09, .045, black);
+  addBox(group, 0, .125, barrelStart + barrelLength * .77, .045, .075, .035, black);
+  addBox(group, 0, .14, length * .34, .055, .09, .035, black);
+
+  if (type === "rifle") {
+    // M1 Garand: long walnut stock, gas tube and distinctive top receiver/clip area.
+    addBox(group, 0, -.015, length * .14, .19, .2, length * .48, wood);
+    addBox(group, 0, .14, length * .43, .17, .045, .24, steel);
+    addBox(group, 0, .19, length * .435, .115, .045, .15, black);
+    addBox(group, 0, .095, length * .58, .06, .06, .31, steel);
+    addBox(group, 0, -.185, length * .45, .1, .12, .12, black);
+    addBox(group, .095, .055, length * .44, .045, .065, .17, steel);
+  } else if (type === "smg") {
+    // Thompson M1A1: heavy receiver, cooling shroud, forward grip and drum magazine.
+    addBox(group, 0, -.015, length * .18, .2, .18, .27, wood);
+    addBox(group, 0, .06, length * .40, .24, .19, .35, black);
+    const jacket = addCylinder(group, 0, .055, length * .73, .082, .082, .31, black, 14);
+    jacket.rotation.x = Math.PI / 2;
+    for (let i = 0; i < 8; i++) {
+      const z = length * (.61 + i * .033);
+      for (const side of [-1, 1]) {
+        const vent = addCylinder(group, side * .081, .055, z, .012, .012, .012, m.black, 6);
+        vent.rotation.x = Math.PI / 2;
+      }
+    }
+    const drum = addCylinder(group, 0, -.17, length * .43, .145, .145, .17, black, 16);
+    addCylinder(group, 0, -.17, length * .43, .05, .05, .178, steel, 12);
+    addBox(group, 0, -.28, length * .46, .13, .12, .13, wood);
   } else if (type === "lmg") {
-    addBox(group, 0, -.21, length * .48, .16, .29, .4, metal);
-    addBox(group, 0, -.35, length * .75, .04, .31, .1, metal);
+    // Browning Automatic Rifle: top cover, long wood fore-end, box magazine and two-legged bipod.
+    addBox(group, 0, -.01, length * .21, .18, .20, length * .36, wood);
+    addBox(group, 0, .155, length * .46, .14, .065, .26, steel);
+    addBox(group, 0, -.19, length * .52, .13, .29, .17, black);
+    const mag = addBox(group, 0, -.34, length * .48, .13, .28, .20, black);
+    mag.rotation.x = -.08;
+    addBox(group, 0, -.36, length * .64, .05, .24, .10, steel);
     for (const side of [-1, 1]) {
-      const leg = addCylinder(group, side * .08, -.42, length * .83, .018, .018, .38, metal, 6);
-      leg.rotation.z = side * .22;
+      const leg = addBeam(group, [side * .08, -.32, length * .79], [side * .14, -.68, length * .9], .018, black, 7);
+      addBox(group, side * .14, -.68, length * .9, .10, .025, .06, m.black);
     }
   } else if (type === "sniper") {
-    const scope = addCylinder(group, 0, .205, length * .61, .055, .055, .42, metal, 12);
+    // Springfield: full stock, receiver, bolt handle, rear sight and optic.
+    addBox(group, 0, -.02, length * .15, .17, .21, length * .55, wood);
+    addBox(group, 0, .16, length * .38, .17, .065, .3, black);
+    const scope = addCylinder(group, 0, .235, length * .42, .045, .045, .42, black, 12);
     scope.rotation.x = Math.PI / 2;
-    addCylinder(group, 0, .205, length * .61, .064, .064, .055, m.steel, 12).rotation.x = Math.PI / 2;
-    addBox(group, 0, .28, length * .61, .085, .07, .13, metal);
-    addBox(group, 0, -.17, length * .48, .12, .23, .16, metal);
-  } else {
-    addBox(group, 0, -.18, length * .43, .11, .24, .16, metal);
-    addBox(group, 0, -.2, length * .62, .10, .24, .12, metal);
+    addCylinder(group, 0, .235, length * .42 - .21, .06, .06, .055, steel, 12).rotation.x = Math.PI / 2;
+    addCylinder(group, 0, .235, length * .42 + .21, .06, .06, .055, steel, 12).rotation.x = Math.PI / 2;
+    addBeam(group, [.11, .075, length * .42], [.16, .02, length * .42], .018, steel, 7);
+    addSphere(group, .16, .02, length * .42, .03, .03, .03, steel, 7);
+    addBox(group, 0, -.185, length * .53, .105, .14, .15, black);
+  } else if (type === "mp40") {
+    // MP 40: simple pressed-steel body, straight stick magazine, slim barrel and folding wire stock.
+    addBox(group, 0, -.01, length * .10, .13, .15, .21, wood);
+    addBox(group, 0, .07, length * .43, .18, .17, .40, black);
+    addBox(group, 0, -.16, length * .47, .09, .25, .12, wood);
+    const magazine = addBox(group, 0, -.28, length * .48, .095, .30, .12, black);
+    magazine.rotation.x = -.035;
+    addBox(group, 0, .01, length * .75, .10, .11, .30, black);
+    addBeam(group, [-.015, .03, -length * .12], [-.015, -.06, -length * .12], .018, steel, 6);
+    addBeam(group, [-.015, -.06, -length * .12], [0, -.08, length * .18], .018, steel, 6);
+    addBeam(group, [0, -.08, length * .18], [.015, .03, length * .18], .018, steel, 6);
+  } else if (type === "bolt") {
+    // Kar98k: long wood furniture, exposed bolt handle and open iron sights.
+    addBox(group, 0, -.02, length * .12, .17, .20, length * .61, wood);
+    addBox(group, 0, .15, length * .40, .15, .075, .26, black);
+    addBeam(group, [.075, .08, length * .43], [.13, .015, length * .43], .018, steel, 7);
+    addSphere(group, .13, .015, length * .43, .03, .03, .03, black, 7);
+    addBox(group, 0, .12, length * .55, .045, .085, .05, black);
+    addBox(group, 0, -.20, length * .47, .10, .15, .16, wood);
+  } else if (type === "assault") {
+    // StG 44: short wood stock and foregrip, angled receiver, curved 7.92 mm magazine.
+    addBox(group, 0, -.01, length * .13, .16, .18, length * .38, wood);
+    addBox(group, 0, .07, length * .43, .21, .18, .30, black);
+    addBox(group, 0, -.17, length * .42, .115, .26, .14, wood);
+    for (let i = 0; i < 4; i++) {
+      const segment = addBox(group, 0, -.25 - i * .035, length * (.48 + i * .025), .105, .11, .115, black);
+      segment.rotation.x = -.12 - i * .04;
+    }
+    addBox(group, 0, -.18, length * .7, .10, .23, .15, wood);
+    addBox(group, 0, .12, length * .55, .05, .07, .04, black);
+  } else if (type === "mg") {
+    // MG 42: long perforated barrel jacket, feed cover and bipod.
+    addBox(group, 0, -.02, length * .16, .19, .2, length * .34, wood);
+    addBox(group, 0, .075, length * .44, .25, .23, .48, black);
+    addBox(group, 0, .205, length * .43, .23, .055, .38, steel);
+    const jacket = addCylinder(group, 0, .055, length * .78, .085, .085, .43, black, 14);
+    jacket.rotation.x = Math.PI / 2;
+    for (let i = 0; i < 7; i++) {
+      const hole = addSphere(group, 0, .14, length * (.63 + i * .033), .025, .012, .012, m.black, 6);
+    }
+    addBox(group, 0, -.23, length * .47, .13, .24, black);
+    for (const side of [-1, 1]) {
+      addBeam(group, [side * .085, -.23, length * .79], [side * .15, -.67, length * .91], .02, black, 7);
+    }
+    addBox(group, .16, .08, length * .37, .08, .12, wood);
   }
+
   if (forView) {
     group.rotation.y = Math.PI;
-    group.position.set(.19, -.23, -.54);
-    group.scale.set(.74, .74, .74);
+    group.position.set(.24, -.27, -.61);
+    group.scale.set(.72, .72, .72);
   }
   return group;
 }
