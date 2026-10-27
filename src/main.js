@@ -381,7 +381,7 @@ function damageSoldier(soldier, amount, point = null, sourceTeam = "enemy") {
 }
 
 function playerShoot() {
-  if (inventory.reloading || state.respawning) return;
+  if (inventory.reloading || state.respawning) return { fired: false, reason: "reloading" };
   const result = inventory.fire();
   if (!result.ok) {
     if (result.reason === "empty" && !state.emptyMessageShown) {
@@ -389,7 +389,7 @@ function playerShoot() {
       state.emptyMessageShown = true;
     }
     state.fireCooldown = .14;
-    return;
+    return { fired: false, reason: "empty" };
   }
   state.emptyMessageShown = false;
   state.fireCooldown = 1 / result.weapon.fireRate;
@@ -413,6 +413,8 @@ function playerShoot() {
     effects.push(addImpact(scene, hit.point, 0xc2ac82, .22));
   }
   syncHud();
+  return { fired: true, hit: Boolean(hit?.soldier), environment: Boolean(hit?.environment),
+    targetHealth: hit?.soldier?.userData.health ?? null, weapon: result.weapon.id };
 }
 
 function onNpcFire({ from, to, team, target, hitChance, damage }) {
@@ -618,3 +620,73 @@ window.addEventListener("resize", () => {
 });
 
 animate();
+
+// A query-string-only helper enables repeatable browser regression tests without exposing
+// debug controls during normal gameplay.
+if (new URLSearchParams(window.location.search).has("test")) {
+  window.__IRON_FRONT_TEST__ = {
+    getStats() {
+      return {
+        ready: true,
+        weaponCount: inventory.items.length,
+        enemyCount: world.enemies.length,
+        allyCount: world.allies.length,
+        occluderCount: world.occluders.length,
+        collisionCount: world.obstacles.length + world.collisionBoxes.length,
+        bonds: inventory.bonds,
+        weapon: inventory.current.id,
+        ammo: inventory.current.ammo,
+        health: state.health
+      };
+    },
+    enemyPositions() {
+      return world.enemies.filter((unit) => !unit.userData.dead).map((unit) => [unit.position.x, unit.position.y, unit.position.z]);
+    },
+    prepareTarget() {
+      state.playing = true;
+      ui.hideStart();
+      ui.hideShop();
+      state.health = SETTINGS.startHealth;
+      player.position.set(SETTINGS.playerStart.x, world.terrainHeight(SETTINGS.playerStart.x, SETTINGS.playerStart.z), SETTINGS.playerStart.z);
+      state.jumpHeight = 0;
+      const target = world.enemies.find((unit) => !unit.userData.dead) || world.enemies[0];
+      target.position.set(0, world.terrainHeight(0, 5), 5);
+      target.userData.health = 100;
+      target.userData.dead = false;
+      target.rotation.set(0, 0, 0);
+      camera.position.set(0, 1.68, 0);
+      const origin = player.position.clone().add(new THREE.Vector3(0, 1.68, 0));
+      const targetPoint = target.position.clone().add(new THREE.Vector3(0, 1.94, .01));
+      const delta = targetPoint.sub(origin);
+      state.yaw = Math.atan2(-delta.x, -delta.z);
+      state.pitch = Math.atan2(delta.y, Math.hypot(delta.x, delta.z));
+      player.rotation.y = state.yaw;
+      camera.rotation.set(state.pitch, 0, 0);
+      scene.updateMatrixWorld(true);
+      return { health: target.userData.health, enemy: [target.position.x, target.position.y, target.position.z] };
+    },
+    fireTestShot() {
+      const saved = world.occluders.splice(0, world.occluders.length);
+      try { return playerShoot(); }
+      finally { world.occluders.push(...saved); }
+    },
+    enemyTestShot() {
+      const saved = world.occluders.splice(0, world.occluders.length);
+      const enemy = world.enemies.find((unit) => !unit.userData.dead) || world.enemies[0];
+      try {
+        onNpcFire({
+          from: new THREE.Vector3(0, 1.5, 4),
+          to: player.position.clone().add(new THREE.Vector3(0, 1.02, 0)),
+          team: "enemy",
+          target: { isPlayer: true, position: player.position },
+          hitChance: 1,
+          damage: 23
+        });
+      } finally { world.occluders.push(...saved); }
+      return { health: state.health, enemyCount: world.enemies.length, source: enemy?.userData.team };
+    }
+  };
+  window.__IRON_FRONT_READY__ = true;
+} else {
+  window.__IRON_FRONT_READY__ = true;
+}
