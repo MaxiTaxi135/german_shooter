@@ -521,6 +521,38 @@ function makeTank(x, z, materials, decor, obstacles, collisionBoxes, enemy = fal
   addOrientedCollider(collisionBoxes, x, z, 0, 0, 2.12, 2.85, group.rotation.y, "tank");
 }
 
+function makeVehicleLabel(text, y, parent) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "rgba(13, 19, 14, 0.88)";
+  ctx.fillRect(7, 7, 498, 114);
+  ctx.strokeStyle = "#d8bd7b";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(9, 9, 494, 110);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#f0e7d0";
+  ctx.font = "bold 43px Arial";
+  ctx.fillText(text, 256, 49);
+  ctx.fillStyle = "#d8bd7b";
+  ctx.font = "bold 27px Arial";
+  ctx.fillText("PRESS E TO ENTER", 256, 88);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const material = new THREE.SpriteMaterial({
+    map: texture, transparent: true, depthTest: false, depthWrite: false
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(0, y, 0);
+  sprite.scale.set(4.6, 1.15, 1);
+  sprite.renderOrder = 20;
+  parent.add(sprite);
+  return sprite;
+}
+
 function makeJeep(x, z, materials, decor, obstacles, vehicles) {
   const jeep = new THREE.Group();
   jeep.position.set(x, terrainHeight(x, z), z);
@@ -562,6 +594,7 @@ function makeJeep(x, z, materials, decor, obstacles, vehicles) {
   // A clearly visible front grille and slatted hood make the vehicle easy to identify.
   for (let i = -3; i <= 3; i++) addBox(jeep, i * .13, .91, -1.65, .035, .25, .025, materials.steelDark, false);
 
+  makeVehicleLabel("ALLIED JEEP", 2.55, jeep);
   jeep.userData.vehicleType = "jeep";
   jeep.userData.heading = 0;
   jeep.userData.speed = 0;
@@ -607,6 +640,7 @@ function makePlane(x, z, materials, decor, obstacles, vehicles) {
   blade.rotation.z = Math.PI / 2;
   addSphere(propeller, 0, 0, -.05, .14, .14, .14, materials.brass, 8);
 
+  makeVehicleLabel("FIGHTER PLANE", 3.45, plane);
   plane.userData.vehicleType = "plane";
   plane.userData.heading = 0;
   plane.userData.speed = 0;
@@ -752,10 +786,9 @@ export function createWorld(renderer) {
     obstacles.push({ x, z, radius: .45 + Math.max(rock.scale.x, rock.scale.z) * .35, kind: "rock" });
   }
 
-  // Put both vehicles directly in front of the player's starting view and close enough to board.
-  // The camera initially faces -Z, so vehicles behind the spawn are easy to miss entirely.
-  makeJeep(-5, 17, materials, decor, obstacles, vehicles);
-  makePlane(5, 17, materials, decor, obstacles, vehicles);
+  // Put both vehicles directly in front of the player, close enough to see and board immediately.
+  makeJeep(-3.6, 20, materials, decor, obstacles, vehicles);
+  makePlane(3.6, 20, materials, decor, obstacles, vehicles);
 
   // Fire teams have a clear starting lane so the first fight begins immediately.
   for (let i = 0; i < 7; i++) {
