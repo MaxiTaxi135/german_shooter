@@ -840,6 +840,10 @@ function startReloadVisual() {
   for (const bullet of reloadBullets) bullet.visible = !usesMagazine;
 }
 function updateReloadVisual() {
+  if (state.currentVehicle) {
+    hideReloadVisual();
+    return;
+  }
   if (!inventory.reloading) {
     hideReloadVisual();
     return;
@@ -970,6 +974,12 @@ if (new URLSearchParams(window.location.search).has("test")) {
           ally: world.materials.alliedMark.color.getHexString(),
           enemy: world.materials.enemyMark.color.getHexString()
         },
+        vehicles: world.vehicles.map((vehicle) => ({
+          type: vehicle.userData.vehicleType,
+          position: [vehicle.position.x, vehicle.position.y, vehicle.position.z],
+          occupied: vehicle.userData.occupied
+        })),
+        currentVehicle: state.currentVehicle?.userData.vehicleType ?? null,
         bonds: inventory.bonds,
         weapon: inventory.current.id,
         ammo: inventory.current.ammo,
@@ -981,6 +991,42 @@ if (new URLSearchParams(window.location.search).has("test")) {
         index, dead: unit.userData.dead,
         position: [unit.position.x, unit.position.y, unit.position.z]
       }));
+    },
+    mountVehicleTest(type) {
+      state.playing = true;
+      ui.hideStart();
+      const vehicle = world.vehicles.find((candidate) => candidate.userData.vehicleType === type);
+      const mounted = mountVehicle(vehicle);
+      return { mounted, currentVehicle: state.currentVehicle?.userData.vehicleType ?? null };
+    },
+    driveVehicleTest(seconds = .5) {
+      if (!state.currentVehicle) return { moved: false, reason: "not mounted" };
+      const vehicle = state.currentVehicle;
+      const before = vehicle.position.clone();
+      keys.add("KeyW");
+      if (vehicle.userData.vehicleType === "plane") keys.add("Space");
+      updateVehicleMovement(Math.max(.01, Math.min(3, seconds)));
+      keys.delete("KeyW");
+      keys.delete("Space");
+      return {
+        moved: before.distanceTo(vehicle.position) > .05,
+        type: vehicle.userData.vehicleType,
+        speed: vehicle.userData.speed,
+        position: [vehicle.position.x, vehicle.position.y, vehicle.position.z],
+        altitude: vehicle.position.y - world.terrainHeight(vehicle.position.x, vehicle.position.z)
+      };
+    },
+    landVehicleTest() {
+      const vehicle = state.currentVehicle;
+      if (!vehicle || vehicle.userData.vehicleType !== "plane") return { landed: false };
+      vehicle.position.y = world.terrainHeight(vehicle.position.x, vehicle.position.z) + .12;
+      vehicle.userData.pitch = 0;
+      player.position.copy(vehicle.position);
+      return { landed: true };
+    },
+    leaveVehicleTest() {
+      const left = leaveVehicle();
+      return { left, currentVehicle: state.currentVehicle?.userData.vehicleType ?? null };
     },
     spawnEnemyTest() {
       const before = world.enemies.length;
