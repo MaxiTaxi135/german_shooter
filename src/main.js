@@ -762,6 +762,10 @@ if (new URLSearchParams(window.location.search).has("test")) {
         allyCount: world.allies.filter((unit) => !unit.userData.dead).length,
         occluderCount: world.occluders.length,
         collisionCount: world.obstacles.length + world.collisionBoxes.length,
+        teamMarkers: {
+          ally: world.materials.alliedMark.color.getHexString(),
+          enemy: world.materials.enemyMark.color.getHexString()
+        },
         bonds: inventory.bonds,
         weapon: inventory.current.id,
         ammo: inventory.current.ammo,
