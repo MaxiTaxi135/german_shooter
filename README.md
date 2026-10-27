@@ -39,8 +39,15 @@ If it is not live yet, open **Actions** in the repository and check the **Deploy
 - **Right mouse button**: aim
 - **R**: reload
 - **B**: open/close the field armory
+- **E**: enter or exit a nearby jeep or landed plane
 - **1–8**: equip a weapon you own
 - **Esc**: release the mouse
+
+## Drive and fly
+
+A usable Allied jeep and a propeller aircraft spawn near the starting area. Walk within about 9 metres and press **E** to board. Press **E** again to exit; planes must be landed before you can leave them.
+
+In the jeep, **W** accelerates, **S** brakes, and **A/D** steer. In the plane, **W** adds throttle, **S** slows down, **A/D** steer, **Space** climbs after building up speed, and **Shift** descends. Keep the throttle up to stay airborne, and return close to the terrain before pressing **E** to get out.
 
 ## Squads and reinforcements
 
