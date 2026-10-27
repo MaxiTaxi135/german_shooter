@@ -55,6 +55,7 @@ function addMesh(geometry, material, x, y, z, parent, castShadow = true) {
   object.position.set(x, y, z);
   object.castShadow = castShadow;
   object.receiveShadow = true;
+  object.userData.blocksShots = castShadow;
   parent.add(object);
   return object;
 }
@@ -252,10 +253,11 @@ function makeCrate(x, z, materials, decor, obstacles) {
   addBox(group, 0, .42, 0, .88, .065, .88, materials.woodDark);
   obstacles.push({ x, z, radius: .7, kind: "crate" });
 }
-function makeSandbag(x, z, rot, materials, decor) {
+function makeSandbag(x, z, rot, materials, decor, obstacles) {
   const bag = addMesh(new THREE.CapsuleGeometry(.23, .36, 3, 7), materials.sandbag, x, terrainHeight(x, z) + .28, z, decor);
   bag.rotation.z = Math.PI / 2;
   bag.rotation.y = rot;
+  obstacles.push({ x, z, radius: .34, kind: "sandbag" });
   return bag;
 }
 function makeHouse(x, z, materials, decor, obstacles, ruined = false) {
@@ -293,7 +295,7 @@ function makeHouse(x, z, materials, decor, obstacles, ruined = false) {
       rubble.rotation.set(Math.random() * .3, Math.random() * 2, Math.random() * .3);
     }
   }
-  obstacles.push({ x, z, radius: 4.4, kind: "building" });
+  obstacles.push({ x, z, radius: Math.hypot(w / 2, d / 2) * .93, kind: "building" });
 }
 function makeTank(x, z, materials, decor, obstacles, enemy = false, destroyed = false) {
   const group = new THREE.Group();
@@ -329,7 +331,7 @@ function makeTank(x, z, materials, decor, obstacles, enemy = false, destroyed = 
       smoke.userData.smoke = true;
     }
   }
-  obstacles.push({ x, z, radius: 3.0, kind: "tank" });
+  obstacles.push({ x, z, radius: 3.25, kind: "tank" });
 }
 
 export function createWorld(renderer) {
@@ -376,6 +378,8 @@ export function createWorld(renderer) {
 
   const decor = new THREE.Group();
   scene.add(decor);
+  const actors = new THREE.Group();
+  scene.add(actors);
   const obstacles = [];
   const enemies = [];
   const allies = [];
@@ -426,10 +430,10 @@ export function createWorld(renderer) {
 
   // Defensive positions and broken equipment.
   for (let row = 0; row < 3; row++) {
-    for (let i = 0; i < 9; i++) makeSandbag(-15 + i * .82, -42 - row * .8, 0, materials, decor);
+    for (let i = 0; i < 9; i++) makeSandbag(-15 + i * .82, -42 - row * .8, 0, materials, decor, obstacles);
   }
   for (let row = 0; row < 2; row++) {
-    for (let i = 0; i < 8; i++) makeSandbag(14 + row * .8, -82 + i * .8, Math.PI / 2, materials, decor);
+    for (let i = 0; i < 8; i++) makeSandbag(14 + row * .8, -82 + i * .8, Math.PI / 2, materials, decor, obstacles);
   }
   makeTank(-13, -102, materials, decor, obstacles, false, true);
   makeTank(52, -47, materials, decor, obstacles, true, false);
@@ -441,6 +445,7 @@ export function createWorld(renderer) {
     const z = -32 + (i % 2) * .25;
     addBox(decor, x, terrainHeight(x, z) + .65, z, .11, 1.3, .11, materials.woodDark);
     addBeam(decor, [x - .52, terrainHeight(x, z) + .8, z], [x + .52, terrainHeight(x, z) + .8, z], .025, materials.steel);
+    obstacles.push({ x, z, radius: .22, kind: "fence" });
   }
 
   for (let i = 0; i < 25; i++) {
@@ -449,6 +454,7 @@ export function createWorld(renderer) {
     const rock = addMesh(new THREE.IcosahedronGeometry(.25 + Math.random() * .7, 1), materials.stone,
       x, terrainHeight(x, z) + .15, z, decor);
     rock.scale.set(1 + Math.random(), .45 + Math.random() * .35, .8 + Math.random());
+    obstacles.push({ x, z, radius: .45 + Math.max(rock.scale.x, rock.scale.z) * .35, kind: "rock" });
   }
 
   // Fire teams have a clear starting lane so the first fight begins immediately.
@@ -456,13 +462,13 @@ export function createWorld(renderer) {
     const x = (i - 4) * 4.2 + (Math.random() - .5) * 1.5;
     const z = -25 - Math.random() * 55;
     enemies.push(createSoldier("enemy", x, z, materials));
-    decor.add(enemies[enemies.length - 1]);
+    actors.add(enemies[enemies.length - 1]);
   }
   for (let i = 0; i < 6; i++) {
     const x = -11 + (i % 3) * 4.8 + (Math.random() - .5) * 1.2;
     const z = 29 + Math.floor(i / 3) * 4.5;
     allies.push(createSoldier("ally", x, z, materials));
-    decor.add(allies[allies.length - 1]);
+    actors.add(allies[allies.length - 1]);
   }
   // Extra patrols around the village.
   for (let i = 0; i < 9; i++) {
@@ -485,9 +491,16 @@ export function createWorld(renderer) {
     const point = addMesh(new THREE.SphereGeometry(.025 + Math.random() * .025, 5, 5), dustMaterial,
       (Math.random() - .5) * 180, 1 + Math.random() * 9, -100 + Math.random() * 180, decor, false);
     point.userData.dust = true;
+    point.userData.blocksShots = false;
     point.userData.drift = .15 + Math.random() * .35;
     dust.push(point);
   }
 
-  return { scene, materials, terrainHeight, enemies, allies, obstacles, decor, dust, sun };
+  const occluders = [];
+  decor.traverse((object) => {
+    if (object.isMesh && object.userData.blocksShots && !object.userData.dust && !object.userData.smoke) {
+      occluders.push(object);
+    }
+  });
+  return { scene, materials, terrainHeight, enemies, allies, obstacles, occluders, decor, actors, dust, sun };
 }
