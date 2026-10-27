@@ -276,7 +276,9 @@ export function createSoldier(team, x, z, materials) {
     addBox(group, side * .25, 1.18, -.035, .14, .22, .27, materials.oliveDark);
   }
   const head = addSphere(group, 0, 1.91, .015, .17, .205, .16, materials.skin);
+  head.userData.hitZone = "head";
   const helmet = addSphere(group, 0, 2.08, -.005, .22, .12, .215, allied ? materials.oliveDark : materials.german);
+  helmet.userData.hitZone = "head";
   helmet.scale.y = .87;
   addBox(group, 0, 2.035, .155, .21, .035, .035, materials.oliveDark);
 
