@@ -260,12 +260,27 @@ function makeSandbag(x, z, rot, materials, decor, obstacles) {
   obstacles.push({ x, z, radius: .34, kind: "sandbag" });
   return bag;
 }
-function makeHouse(x, z, materials, decor, obstacles, ruined = false) {
+function addOrientedCollider(list, baseX, baseZ, localX, localZ, halfX, halfZ, rotation) {
+  const c = Math.cos(rotation), s = Math.sin(rotation);
+  list.push({
+    x: baseX + localX * c + localZ * s,
+    z: baseZ - localX * s + localZ * c,
+    halfX, halfZ, rotation, kind: "building-wall",
+    radius: Math.hypot(halfX, halfZ)
+  });
+}
+function makeHouse(x, z, materials, decor, obstacles, collisionBoxes, ruined = false) {
   const group = new THREE.Group();
   group.position.set(x, terrainHeight(x, z), z);
   group.rotation.y = (Math.random() - .5) * .5;
   decor.add(group);
   const w = 8 + Math.random() * 2.5, d = 7.5 + Math.random() * 2.5, h = 3.7;
+  // Physical wall colliders match the wall segments and leave the door opening walkable.
+  addOrientedCollider(collisionBoxes, x, z, 0, -d / 2, w / 2, .22, group.rotation.y);
+  addOrientedCollider(collisionBoxes, x, z, -w / 2, 0, .22, d / 2, group.rotation.y);
+  addOrientedCollider(collisionBoxes, x, z, w / 2, 0, .22, d / 2, group.rotation.y);
+  addOrientedCollider(collisionBoxes, x, z, -w * .30, d / 2, w * .20, .22, group.rotation.y);
+  addOrientedCollider(collisionBoxes, x, z, w * .35, d / 2, w * .15, .22, group.rotation.y);
   // Separate wall sections leave an actual doorway instead of a single solid block.
   addBox(group, 0, h / 2, -d / 2, w, h, .35, materials.brick);
   addBox(group, -w / 2, h / 2, 0, .35, h, d, materials.brick);
@@ -381,6 +396,7 @@ export function createWorld(renderer) {
   const actors = new THREE.Group();
   scene.add(actors);
   const obstacles = [];
+  const collisionBoxes = [];
   const enemies = [];
   const allies = [];
 
@@ -408,7 +424,7 @@ export function createWorld(renderer) {
     [32,-159,false], [-62,-24,false], [63,-25,true], [-70,-134,false], [72,-155,true],
     [-55,45,true], [56,48,false], [-88,8,false], [86,5,true], [-97,-65,true]
   ];
-  for (const [x, z, ruined] of houseSpots) makeHouse(x, z, materials, decor, obstacles, ruined);
+  for (const [x, z, ruined] of houseSpots) makeHouse(x, z, materials, decor, obstacles, collisionBoxes, ruined);
 
   for (let i = 0; i < 92; i++) {
     const angle = Math.random() * Math.PI * 2;
@@ -502,5 +518,5 @@ export function createWorld(renderer) {
       occluders.push(object);
     }
   });
-  return { scene, materials, terrainHeight, enemies, allies, obstacles, occluders, decor, actors, dust, sun };
+  return { scene, materials, terrainHeight, enemies, allies, obstacles, collisionBoxes, occluders, decor, actors, dust, sun };
 }
