@@ -643,7 +643,9 @@ if (new URLSearchParams(window.location.search).has("test")) {
       return world.enemies.filter((unit) => !unit.userData.dead).map((unit) => [unit.position.x, unit.position.y, unit.position.z]);
     },
     prepareTarget() {
-      state.playing = true;
+      state.playing = false;
+      state.fireHeld = false;
+      state.aimHeld = false;
       ui.hideStart();
       ui.hideShop();
       state.health = SETTINGS.startHealth;
