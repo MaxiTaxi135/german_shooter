@@ -135,8 +135,8 @@ function makeMaterials() {
     olive: new THREE.MeshStandardMaterial({ color: 0x566044, map: fabricTexture, roughness: .95 }),
     oliveDark: new THREE.MeshStandardMaterial({ color: 0x363e2e, map: fabricTexture, roughness: .95 }),
     german: new THREE.MeshStandardMaterial({ color: 0x73766b, map: fabricTexture, roughness: .95 }),
-    allied: new THREE.MeshStandardMaterial({ color: 0x596d43, map: fabricTexture, roughness: .97 }),
-    enemy: new THREE.MeshStandardMaterial({ color: 0x58636b, map: fabricTexture, roughness: .97 }),
+    allied: new THREE.MeshStandardMaterial({ color: 0x536c38, map: fabricTexture, roughness: .97 }),
+    enemy: new THREE.MeshStandardMaterial({ color: 0x6c7378, map: fabricTexture, roughness: .97 }),
     alliedVest: new THREE.MeshStandardMaterial({ color: 0x3b4630, map: fabricTexture, roughness: .98 }),
     enemyVest: new THREE.MeshStandardMaterial({ color: 0x30383c, map: fabricTexture, roughness: .98 }),
     alliedHelmet: new THREE.MeshStandardMaterial({ color: 0x3d4b31, roughness: .92 }),
@@ -355,6 +355,8 @@ export function createSoldier(team, x, z, materials) {
   const pack = addBox(group, 0, 1.25, -.28, allied ? .32 : .35, allied ? .42 : .46, .17,
     allied ? materials.alliedGear : materials.enemyGear);
   pack.rotation.x = -.08;
+  // Visible from behind: cream identification tab for Allies, muted red tab for Axis.
+  addBox(group, 0, 1.38, -.374, .19, .105, .025, allied ? materials.alliedMark : materials.enemyMark);
   const legs = [];
   const arms = [];
   for (const side of [-1, 1]) {
@@ -662,6 +664,7 @@ export function createWorld(renderer) {
     const x = i === 0 ? -4.2 : 4.2;
     const z = 29 + Math.floor(i / 3) * 4.5;
     allies.push(createSoldier("ally", x, z, materials));
+    allies[allies.length - 1].userData.formationOffsetX = x;
     actors.add(allies[allies.length - 1]);
   }
   // Extra patrols around the village.
@@ -676,6 +679,7 @@ export function createWorld(renderer) {
   const lastAllyX = 0;
   const lastAllyZ = 15 + Math.random() * 3;
   allies.push(createSoldier("ally", lastAllyX, lastAllyZ, materials));
+  allies[allies.length - 1].userData.formationOffsetX = lastAllyX;
   actors.add(allies[allies.length - 1]);
 
   const dust = [];
