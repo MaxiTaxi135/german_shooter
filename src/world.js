@@ -153,8 +153,6 @@ function makeMaterials() {
     black: new THREE.MeshStandardMaterial({ color: 0x171a18, roughness: .82 }),
     brass: new THREE.MeshStandardMaterial({ color: 0x9e8045, roughness: .35, metalness: .72 }),
     muzzle: new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .9 }),
-    allied: new THREE.MeshStandardMaterial({ color: 0x626f50, map: fabricTexture, roughness: .98 }),
-    enemy: new THREE.MeshStandardMaterial({ color: 0x77776a, map: fabricTexture, roughness: .98 }),
     hitbox: new THREE.MeshBasicMaterial({ color: 0xffffff, colorWrite: false, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
   };
 }
@@ -307,7 +305,8 @@ export function createSoldier(team, x, z, materials) {
   group.userData = {
     kind: "soldier", team, health: 100, dead: false, cooldown: .5 + Math.random() * 1.8,
     phase: Math.random() * 6.2, strafe: Math.random() < .5 ? -1 : 1,
-    target: null, animationSpeed: 0, hitFlash: 0
+    walkSpeed: allied ? 2.4 + Math.random() * .35 : 2.65 + Math.random() * .5,
+    spawnedAt: performance.now(), target: null, animationSpeed: 0, hitFlash: 0
   };
   const torso = addMesh(new THREE.CapsuleGeometry(.29, .47, 4, 8), uniform, 0, 1.22, 0, group);
   torso.scale.set(1, 1.04, .82);
