@@ -137,12 +137,20 @@ function showShop() {
 }
 function closeShop() {
   ui.hideShop();
-  if (state.playing) renderer.domElement.requestPointerLock?.();
+  if (state.playing) requestPointerLockSafe();
+}
+function requestPointerLockSafe() {
+  try {
+    const request = renderer.domElement.requestPointerLock?.();
+    if (request && typeof request.catch === "function") request.catch(() => {});
+  } catch {
+    // Pointer lock is an optional browser capability; the mouse still works without it.
+  }
 }
 function startGame() {
   state.playing = true;
   ui.hideStart();
-  renderer.domElement.requestPointerLock?.();
+  requestPointerLockSafe();
   toast("MOVE OUT · WATCH YOUR SECTORS", 1800);
 }
 function handlePurchase(id) {
@@ -206,7 +214,7 @@ renderer.domElement.addEventListener("mousedown", (event) => {
   if (!state.playing || ui.isShopOpen()) return;
   if (event.button === 0) {
     state.fireHeld = true;
-    if (!state.pointerLocked) renderer.domElement.requestPointerLock?.();
+    if (!state.pointerLocked) requestPointerLockSafe();
   }
   if (event.button === 2) state.aimHeld = true;
 });
@@ -257,7 +265,11 @@ function lineOfSightBlocked(x, z) {
       const oldX = oldDx * c - oldDz * sin;
       const oldZ = oldDx * sin + oldDz * c;
       const wasInside = Math.abs(oldX) < box.halfX + .62 && Math.abs(oldZ) < box.halfZ + .62;
-      const gettingOut = Math.abs(localX) + Math.abs(localZ) > Math.abs(oldX) + Math.abs(oldZ) + .0001;
+      const oldPenetration = Math.max(0, box.halfX + .62 - Math.abs(oldX)) +
+        Math.max(0, box.halfZ + .62 - Math.abs(oldZ));
+      const newPenetration = Math.max(0, box.halfX + .62 - Math.abs(localX)) +
+        Math.max(0, box.halfZ + .62 - Math.abs(localZ));
+      const gettingOut = newPenetration < oldPenetration - .0001;
       if (!(wasInside && gettingOut)) return true;
     }
   }
