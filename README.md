@@ -1,6 +1,6 @@
 # IRON FRONT: WWII
 
-A modular browser-based 3D battlefield prototype built with Three.js.
+A modular browser-based 3D WWII battlefield prototype built with Three.js. The player fights with a small three-soldier Allied squad against continuous enemy reinforcements.
 
 ## Play
 
@@ -41,6 +41,12 @@ If it is not live yet, open **Actions** in the repository and check the **Deploy
 - **B**: open/close the field armory
 - **1–8**: equip a weapon you own
 - **Esc**: release the mouse
+
+## Squads and reinforcements
+
+You start with **three Allied soldiers**. Allied troops wear olive-drab uniforms with pale identification markings; enemy infantry wear slate-grey uniforms, charcoal helmets, and muted red armbands. The HUD shows the number of active hostiles.
+
+The first wave has 12 enemies. Defeated enemies are cleared from the battlefield after a short delay, and replacements spawn around the player at safe points. Active enemy infantry are replenished up to a limit of 12, so new opponents continue arriving as you defeat them.
 
 ## World and collision notes
 
