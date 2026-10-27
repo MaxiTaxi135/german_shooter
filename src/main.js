@@ -459,7 +459,8 @@ function updateVehicleMovement(dt) {
     } else {
       if (!vehiclePositionBlocked(nx, vehicle.position.z, vehicle, clearance)) vehicle.position.x = nx;
       if (!vehiclePositionBlocked(vehicle.position.x, nz, vehicle, clearance)) vehicle.position.z = nz;
-      if (isPlane) data.speed = Math.min(data.speed, 10);
+      // Do not cap throttle here: a plane must be able to build takeoff speed even if
+      // a small ground prop briefly blocks its runway. Once airborne, ground clutter is ignored.
     }
   }
 
@@ -475,16 +476,21 @@ function updateVehicleMovement(dt) {
     const targetPitch = climb ? .3 : descend ? -.24 : 0;
     data.pitch = THREE.MathUtils.damp(data.pitch, targetPitch, 2.9, dt);
     data.bank = THREE.MathUtils.damp(data.bank, -steer * .32, 3.2, dt);
-    if (vehicle.position.y > groundY + .5 || (data.speed > 13 && climb)) {
-      const sink = data.speed < 12 ? 4.4 : .22;
-      vehicle.position.y += (Math.sin(data.pitch) * data.speed - sink) * dt;
+    const liftingOff = data.speed > 13 && climb;
+    if (vehicle.position.y > groundY + .5 || liftingOff) {
+      const verticalSpeed = descend
+        ? -Math.max(2.5, data.speed * .18)
+        : climb
+          ? Math.max(3.5, Math.sin(data.pitch) * data.speed)
+          : (data.speed < 12 ? -4.4 : -.22);
+      vehicle.position.y += verticalSpeed * dt;
     } else {
       vehicle.position.y = groundY;
-      data.pitch = Math.max(0, data.pitch - dt * 1.2);
+      if (!climb) data.pitch = Math.max(0, data.pitch - dt * 1.2);
     }
     if (vehicle.position.y < groundY) {
       vehicle.position.y = groundY;
-      data.pitch = 0;
+      if (!climb) data.pitch = 0;
     }
     vehicle.rotation.set(data.pitch, data.heading, data.bank, "YXZ");
     if (data.propeller) data.propeller.rotation.z += dt * (8 + data.speed * 1.9);
