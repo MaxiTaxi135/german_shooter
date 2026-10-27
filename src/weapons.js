@@ -95,7 +95,9 @@ export function findEnemyHit(camera, enemies, occluders = [], maxDistance = 260)
       let root = hits[0].object;
       while (root && root.userData.kind !== "soldier") root = root.parent;
       if (root && root.userData.team === "enemy" && !root.userData.dead) {
-        soldierHit = { soldier: root, point: hits[0].point, distance: hits[0].distance };
+        const objectZone = hits[0].object.userData.hitZone;
+        const zone = objectZone || (hits[0].point.y > root.position.y + 1.72 ? "head" : "body");
+        soldierHit = { soldier: root, point: hits[0].point, distance: hits[0].distance, zone };
       }
     }
   }
