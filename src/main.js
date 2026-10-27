@@ -104,8 +104,16 @@ magazineMesh.visible = false;
 camera.add(magazineMesh);
 
 const muzzleLight = new THREE.PointLight(0xffad53, 0, 3.3, 2);
-muzzleLight.position.set(.3, -.18, -.98);
+muzzleLight.position.set(.19, -.19, -1.72);
 camera.add(muzzleLight);
+const muzzleFlash = new THREE.Mesh(
+  new THREE.SphereGeometry(.085, 8, 8),
+  new THREE.MeshBasicMaterial({ color: 0xffd18b, transparent: true, opacity: .88, depthWrite: false })
+);
+muzzleFlash.scale.set(.8, .8, 2.4);
+muzzleFlash.position.copy(muzzleLight.position);
+muzzleFlash.visible = false;
+camera.add(muzzleFlash);
 const effects = [];
 let ui;
 let hudTimer = 0;
@@ -137,8 +145,8 @@ function startGame() {
 function handlePurchase(id) {
   const result = inventory.buyOrEquip(id);
   if (result.ok) {
+    hideReloadVisual();
     equipViewModel();
-    if (inventory.current.ammo === 0 && inventory.current.reserveAmmo > 0) inventory.startReload();
     syncHud();
   }
   return result;
@@ -162,8 +170,10 @@ window.addEventListener("keydown", (event) => {
   if (event.repeat) return;
   if (event.code === "KeyR" && state.playing && !ui.isShopOpen()) {
     const result = inventory.startReload();
-    if (result.ok) toast("RELOADING", 850);
-    else toast(result.message, 1000);
+    if (result.ok) {
+      startReloadVisual();
+      toast("RELOADING", 850);
+    } else toast(result.message, 1000);
   }
   if (event.code === "KeyB" && state.playing) {
     if (ui.isShopOpen()) closeShop();
@@ -189,7 +199,7 @@ function equipHotkey(index) {
   const item = inventory.items[index];
   if (!item) return;
   const result = inventory.equip(item.id);
-  if (result.ok) { equipViewModel(); syncHud(); toast(result.message, 900); }
+  if (result.ok) { hideReloadVisual(); equipViewModel(); syncHud(); toast(result.message, 900); }
 }
 
 renderer.domElement.addEventListener("mousedown", (event) => {
@@ -222,11 +232,30 @@ document.addEventListener("mousemove", (event) => {
 });
 
 function lineOfSightBlocked(x, z) {
-  // Keep the player moving around walls, trees and vehicles instead of walking straight through them.
+  // Physical proximity colliders for buildings, trees, vehicles, rubble and defensive positions.
   for (const obstacle of world.obstacles) {
     const dx = x - obstacle.x, dz = z - obstacle.z;
+    const distanceSq = dx * dx + dz * dz;
     const radius = obstacle.radius + .62;
-    if (dx * dx + dz * dz < radius * radius) return true;
+    if (distanceSq < radius * radius) {
+      const oldDx = player.position.x - obstacle.x;
+      const oldDz = player.position.z - obstacle.z;
+      const oldDistanceSq = oldDx * oldDx + oldDz * oldDz;
+      // If the spawn or a collision put the player inside a collider, allow movement outward.
+      if (!(oldDistanceSq < radius * radius && distanceSq > oldDistanceSq + .0001)) return true;
+    }
+  }
+  // Infantry have a body collider too, so the player cannot walk through the squad.
+  for (const soldier of [...world.enemies, ...world.allies]) {
+    if (soldier.userData.dead) continue;
+    const dx = x - soldier.position.x, dz = z - soldier.position.z;
+    const distanceSq = dx * dx + dz * dz;
+    if (distanceSq < .78 * .78) {
+      const oldDx = player.position.x - soldier.position.x;
+      const oldDz = player.position.z - soldier.position.z;
+      if (!(oldDx * oldDx + oldDz * oldDz < .78 * .78 &&
+            distanceSq > oldDx * oldDx + oldDz * oldDz + .0001)) return true;
+    }
   }
   return false;
 }
@@ -299,39 +328,55 @@ function damageSoldier(soldier, amount, point = null, fromPlayer = false) {
 }
 
 function playerShoot() {
+  if (inventory.reloading || state.respawning) return;
   const result = inventory.fire();
   if (!result.ok) {
     if (result.reason === "empty" && !state.emptyMessageShown) {
       toast("MAGAZINE EMPTY · PRESS R", 1050);
       state.emptyMessageShown = true;
     }
+    state.fireCooldown = .14;
     return;
   }
   state.emptyMessageShown = false;
   state.fireCooldown = 1 / result.weapon.fireRate;
   state.muzzleUntil = performance.now() + 65;
   muzzleLight.intensity = 2.4;
+  muzzleFlash.visible = true;
   const origin = new THREE.Vector3();
   const direction = new THREE.Vector3();
   camera.getWorldPosition(origin);
   camera.getWorldDirection(direction);
-  const hit = findEnemyHit(camera, world.enemies);
+  const hit = findEnemyHit(camera, world.enemies, world.occluders);
   const end = hit ? hit.point : origin.clone().add(direction.multiplyScalar(180));
   effects.push(addTracer(scene, origin.clone().add(direction.clone().multiplyScalar(.55)), end, 0xf3d399, .085));
-  if (hit) {
+  if (hit?.soldier) {
     const headshot = hit.point.y > hit.soldier.position.y + 1.72;
     const dealt = result.weapon.damage * (headshot ? 1.35 : 1);
     damageSoldier(hit.soldier, dealt, hit.point, true);
     if (headshot) toast("HEADSHOT", 850);
     else ui.hitmarker();
+  } else if (hit?.environment) {
+    effects.push(addImpact(scene, hit.point, 0xc2ac82, .22));
   }
   syncHud();
 }
 
 function onNpcFire({ from, to, team, target, hitChance, damage }) {
-  const end = to.clone();
-  // Real tracer line, with a slight colour difference between the opposing sides.
+  const delta = new THREE.Vector3().subVectors(to, from);
+  const distance = delta.length();
+  const direction = delta.clone().normalize();
+  const ray = new THREE.Raycaster(from, direction, .15, Math.max(.15, distance - .3));
+  const blockers = scene.updateMatrixWorld(true) && world.occluders.length
+    ? ray.intersectObjects(world.occluders, false)
+    : [];
+  const blockingHit = blockers.find((hit) => hit.distance < distance - .3);
+  const end = blockingHit ? blockingHit.point : to.clone();
   effects.push(addTracer(scene, from, end, team === "ally" ? 0xe5cb8d : 0xce805e, .075));
+  if (blockingHit) {
+    effects.push(addImpact(scene, blockingHit.point, 0xb5a27d, .2));
+    return;
+  }
   if (Math.random() > hitChance) return;
   if (target.isPlayer) {
     if (team !== "enemy" || state.respawning) return;
@@ -362,6 +407,11 @@ function respawnPlayer() {
   }, 1300);
 }
 
+function hideReloadVisual() {
+  reloadArm.visible = false;
+  magazineMesh.visible = false;
+  for (const bullet of reloadBullets) bullet.visible = false;
+}
 function startReloadVisual() {
   const active = inventory.current;
   reloadArm.visible = true;
@@ -428,7 +478,10 @@ function updateEffects(dt) {
     particle.position.y += Math.sin(state.elapsed + particle.position.x) * dt * .12;
     if (particle.position.y > 11) particle.position.y = .5;
   }
-  if (performance.now() > state.muzzleUntil) muzzleLight.intensity = 0;
+  if (performance.now() > state.muzzleUntil) {
+    muzzleLight.intensity = 0;
+    muzzleFlash.visible = false;
+  }
 }
 
 function animate() {
