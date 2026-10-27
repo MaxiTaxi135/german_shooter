@@ -42,17 +42,35 @@ function walk(unit, direction, speed, dt, world) {
     direction.normalize();
     const nextX = unit.position.x + direction.x * speed * dt;
     const nextZ = unit.position.z + direction.z * speed * dt;
-    const clear = (x, z) => world.obstacles.every((obstacle) => {
-      const dx = x - obstacle.x, dz = z - obstacle.z;
-      const distanceSq = dx * dx + dz * dz;
-      const radius = obstacle.radius + .42;
-      if (distanceSq >= radius * radius) return true;
-      // Units occasionally spawn next to cover. Allow them to escape an overlap instead of freezing.
-      const oldDx = unit.position.x - obstacle.x;
-      const oldDz = unit.position.z - obstacle.z;
-      const oldDistanceSq = oldDx * oldDx + oldDz * oldDz;
-      return oldDistanceSq < radius * radius && distanceSq > oldDistanceSq + .0001;
-    });
+    const clear = (x, z) => {
+      for (const obstacle of world.obstacles) {
+        const dx = x - obstacle.x, dz = z - obstacle.z;
+        const distanceSq = dx * dx + dz * dz;
+        const radius = obstacle.radius + .42;
+        if (distanceSq < radius * radius) {
+          const oldDx = unit.position.x - obstacle.x;
+          const oldDz = unit.position.z - obstacle.z;
+          const oldDistanceSq = oldDx * oldDx + oldDz * oldDz;
+          // A unit trapped on spawn can step outward and recover.
+          if (!(oldDistanceSq < radius * radius && distanceSq > oldDistanceSq + .0001)) return false;
+        }
+      }
+      // Avoid body overlap, but allow an already-overlapping unit to move apart.
+      const everybody = [...world.enemies, ...world.allies];
+      for (const other of everybody) {
+        if (other === unit || other.userData.dead) continue;
+        const dx = x - other.position.x, dz = z - other.position.z;
+        const distSq = dx * dx + dz * dz;
+        const radius = .66;
+        if (distSq < radius * radius) {
+          const oldDx = unit.position.x - other.position.x;
+          const oldDz = unit.position.z - other.position.z;
+          const oldSq = oldDx * oldDx + oldDz * oldDz;
+          if (!(oldSq < radius * radius && distSq > oldSq + .0001)) return false;
+        }
+      }
+      return true;
+    };
     if (clear(nextX, nextZ)) {
       unit.position.x = nextX;
       unit.position.z = nextZ;
@@ -85,8 +103,10 @@ function walk(unit, direction, speed, dt, world) {
   for (let i = 0; i < u.arms.length; i++) u.arms[i].rotation.x = (i === 0 ? -swing * .35 : swing * .35);
   if (u.dead) {
     u.deathTime = (u.deathTime || 0) + dt;
-    unit.rotation.x = Math.min(1.35, u.deathTime * 2.5);
-    unit.position.y -= dt * .22;
+    unit.rotation.x = Math.min(1.2, u.deathTime * 2.1);
+    unit.rotation.z = u.strafe * Math.min(.7, u.deathTime * 1.0);
+    const groundY = world.terrainHeight(unit.position.x, unit.position.z) - .2;
+    unit.position.y = Math.max(groundY, unit.position.y - dt * .22);
   }
 }
 
