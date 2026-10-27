@@ -7,6 +7,37 @@ export function terrainHeight(x, z) {
        + 0.08 * Math.cos(z * 0.091);
 }
 
+export function raycastTerrain(origin, direction, maxDistance = 260, step = 1.25) {
+  const heightDifference = (distance) => {
+    const x = origin.x + direction.x * distance;
+    const y = origin.y + direction.y * distance;
+    const z = origin.z + direction.z * distance;
+    return y - terrainHeight(x, z);
+  };
+  let previousDistance = 0.08;
+  let previousDifference = heightDifference(previousDistance);
+  if (previousDifference <= 0) {
+    return { distance: previousDistance, point: origin.clone().addScaledVector(direction, previousDistance), object: null, terrain: true };
+  }
+  for (let distance = previousDistance + step; distance <= maxDistance; distance += step) {
+    const difference = heightDifference(distance);
+    if (difference <= 0) {
+      let low = previousDistance;
+      let high = distance;
+      for (let i = 0; i < 9; i++) {
+        const middle = (low + high) * .5;
+        if (heightDifference(middle) > 0) low = middle;
+        else high = middle;
+      }
+      const hitDistance = (low + high) * .5;
+      return { distance: hitDistance, point: origin.clone().addScaledVector(direction, hitDistance), object: null, terrain: true };
+    }
+    previousDistance = distance;
+    previousDifference = difference;
+  }
+  return null;
+}
+
 function noiseTexture(base, colors, repeat = 8, seed = 1) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 256;
