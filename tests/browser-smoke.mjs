@@ -67,6 +67,7 @@ try {
   assert.notEqual(stats.teamMarkers.ally, stats.teamMarkers.enemy, "ally and enemy uniform markers must differ");
   assert.ok(stats.occluderCount > 100, "scenery raycast blockers were not registered");
   assert.ok(stats.collisionCount > 150, "world collision volumes were not registered");
+  assert.deepEqual(stats.vehicles.map((vehicle) => vehicle.type).sort(), ["jeep", "plane"], "jeep and plane should spawn");
   assert.ok(await page.locator("canvas").count() >= 1, "Three.js canvas is missing");
 
   await page.locator("#deploy-button").click();
@@ -122,6 +123,27 @@ try {
   assert.equal(reinforcement.afterTotal, reinforcement.beforeTotal + 1, "a reinforcement was not added to the world");
   assert.equal(reinforcement.afterActive, reinforcement.beforeActive, "the replacement should restore the active enemy count");
 
+  const jeepMount = await page.evaluate(() => window.__IRON_FRONT_TEST__.mountVehicleTest("jeep"));
+  assert.deepEqual(jeepMount, { mounted: true, currentVehicle: "jeep" }, "player could not board the jeep");
+  const jeepDrive = await page.evaluate(() => window.__IRON_FRONT_TEST__.driveVehicleTest(.5));
+  assert.equal(jeepDrive.type, "jeep", "jeep driving state was lost");
+  assert.equal(jeepDrive.moved, true, "jeep did not move under throttle");
+  assert.ok(jeepDrive.speed > 0, "jeep throttle did not increase speed");
+  const jeepExit = await page.evaluate(() => window.__IRON_FRONT_TEST__.leaveVehicleTest());
+  assert.deepEqual(jeepExit, { left: true, currentVehicle: null }, "player could not exit the jeep");
+
+  const planeMount = await page.evaluate(() => window.__IRON_FRONT_TEST__.mountVehicleTest("plane"));
+  assert.deepEqual(planeMount, { mounted: true, currentVehicle: "plane" }, "player could not board the plane");
+  const planeFlight = await page.evaluate(() => window.__IRON_FRONT_TEST__.driveVehicleTest(2.4));
+  assert.equal(planeFlight.type, "plane", "plane flight state was lost");
+  assert.equal(planeFlight.moved, true, "plane did not move under throttle");
+  assert.ok(planeFlight.speed > 10, "plane throttle did not accelerate");
+  assert.ok(planeFlight.altitude > 2.8, "plane did not climb when commanded");
+  const planeLand = await page.evaluate(() => window.__IRON_FRONT_TEST__.landVehicleTest());
+  assert.equal(planeLand.landed, true, "test plane could not return to the ground");
+  const planeExit = await page.evaluate(() => window.__IRON_FRONT_TEST__.leaveVehicleTest());
+  assert.deepEqual(planeExit, { left: true, currentVehicle: null }, "player could not exit the landed plane");
+
   assert.deepEqual(pageErrors, [], "browser raised uncaught JavaScript errors");
   assert.deepEqual(criticalConsoleErrors, [], "browser reported critical console errors");
   console.log(JSON.stringify({
@@ -132,7 +154,8 @@ try {
     playerHealth: healthAfter,
     reload: "PASS",
     collisionVolumes: stats.collisionCount,
-    sceneryOccluders: stats.occluderCount
+    sceneryOccluders: stats.occluderCount,
+    vehicles: ["jeep drive", "plane flight", "plane landing"]
   }, null, 2));
 } catch (error) {
   console.error(error.stack || error);
