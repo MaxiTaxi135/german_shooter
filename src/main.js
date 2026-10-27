@@ -26,7 +26,8 @@ const state = {
   emptyMessageShown: false,
   respawning: false,
   enemySpawnTimer: 1.65,
-  totalEnemySpawns: 0
+  totalEnemySpawns: 0,
+  currentVehicle: null
 };
 window.gameHealth = state.health;
 
@@ -202,8 +203,12 @@ window.addEventListener("keydown", (event) => {
     if (ui.isShopOpen()) closeShop();
     else showShop();
   }
+  if (event.code === "KeyE" && state.playing && !ui.isShopOpen()) {
+    if (state.currentVehicle) leaveVehicle();
+    else enterNearbyVehicle();
+  }
   if (/^Digit[1-8]$/.test(event.code)) equipHotkey(Number(event.code.slice(5)) - 1);
-  if (event.code === "Space" && state.playing && state.onGround && !ui.isShopOpen()) {
+  if (event.code === "Space" && state.playing && !state.currentVehicle && state.onGround && !ui.isShopOpen()) {
     state.jumpVelocity = SETTINGS.playerJumpSpeed;
     state.onGround = false;
   }
@@ -243,7 +248,7 @@ document.addEventListener("pointerlockchange", () => {
   }
 });
 document.addEventListener("mousemove", (event) => {
-  if (!state.pointerLocked || !state.playing || ui.isShopOpen()) return;
+  if (!state.pointerLocked || !state.playing || ui.isShopOpen() || state.currentVehicle) return;
   state.yaw -= event.movementX * .0021;
   state.pitch -= event.movementY * .0021;
   state.pitch = THREE.MathUtils.clamp(state.pitch, -1.28, 1.22);
@@ -256,6 +261,7 @@ function lineOfSightBlocked(x, z) {
   // Buildings use individual rotated wall colliders so their doorways are not sealed by an invisible circle.
   for (const obstacle of world.obstacles) {
     if (obstacle.kind === "building" || obstacle.kind === "crate" || obstacle.kind === "tank") continue;
+    if (obstacle.vehicle && state.currentVehicle === obstacle.vehicle) continue;
     const dx = x - obstacle.x, dz = z - obstacle.z;
     const distanceSq = dx * dx + dz * dz;
     const radius = obstacle.radius + .62;
@@ -300,6 +306,7 @@ function lineOfSightBlocked(x, z) {
 }
 function movePlayer(dt) {
   if (!state.playing || ui.isShopOpen()) return;
+  if (state.currentVehicle) { updateVehicleMovement(dt); return; }
   const forward = new THREE.Vector3(-Math.sin(state.yaw), 0, -Math.cos(state.yaw));
   const right = new THREE.Vector3(Math.cos(state.yaw), 0, -Math.sin(state.yaw));
   const input = new THREE.Vector3();
@@ -720,7 +727,7 @@ function animate() {
   if (state.playing && !ui.isShopOpen()) {
     movePlayer(dt);
     if (state.fireCooldown > 0) state.fireCooldown = Math.max(0, state.fireCooldown - dt);
-    if (state.fireHeld && state.fireCooldown <= 0 && !inventory.reloading) playerShoot();
+    if (state.fireHeld && !state.currentVehicle && state.fireCooldown <= 0 && !inventory.reloading) playerShoot();
     if (inventory.update(dt)) {
       reloadArm.visible = false;
       magazineMesh.visible = false;
