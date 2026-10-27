@@ -113,7 +113,8 @@ function makeMaterials() {
     brass: new THREE.MeshStandardMaterial({ color: 0x9e8045, roughness: .35, metalness: .72 }),
     muzzle: new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .9 }),
     allied: new THREE.MeshStandardMaterial({ color: 0x626f50, map: fabricTexture, roughness: .98 }),
-    enemy: new THREE.MeshStandardMaterial({ color: 0x77776a, map: fabricTexture, roughness: .98 })
+    enemy: new THREE.MeshStandardMaterial({ color: 0x77776a, map: fabricTexture, roughness: .98 }),
+    hitbox: new THREE.MeshBasicMaterial({ color: 0xffffff, colorWrite: false, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })
   };
 }
 
@@ -278,6 +279,21 @@ export function createSoldier(team, x, z, materials) {
   const helmet = addSphere(group, 0, 2.08, -.005, .22, .12, .215, allied ? materials.oliveDark : materials.german);
   helmet.scale.y = .87;
   addBox(group, 0, 2.035, .155, .21, .035, .035, materials.oliveDark);
+
+  // Dedicated invisible body and head volumes make hit registration consistent even
+  // when a ray passes through gaps between the low-poly clothing parts.
+  const bodyHitbox = new THREE.Mesh(new THREE.CapsuleGeometry(.325, .66, 4, 8), materials.hitbox);
+  bodyHitbox.position.set(0, 1.18, .015);
+  bodyHitbox.userData.hitZone = "body";
+  bodyHitbox.castShadow = false;
+  bodyHitbox.receiveShadow = false;
+  group.add(bodyHitbox);
+  const headHitbox = new THREE.Mesh(new THREE.SphereGeometry(.205, 12, 9), materials.hitbox);
+  headHitbox.position.set(0, 1.93, .015);
+  headHitbox.userData.hitZone = "head";
+  headHitbox.castShadow = false;
+  headHitbox.receiveShadow = false;
+  group.add(headHitbox);
   const pack = addBox(group, 0, 1.25, -.28, .32, .42, .17, materials.oliveDark);
   pack.rotation.x = -.08;
   const legs = [];
