@@ -752,9 +752,10 @@ export function createWorld(renderer) {
     obstacles.push({ x, z, radius: .45 + Math.max(rock.scale.x, rock.scale.z) * .35, kind: "rock" });
   }
 
-  // Park one usable jeep and one flyable propeller plane near the Allied start.
-  makeJeep(-8, 24, materials, decor, obstacles, vehicles);
-  makePlane(13, 31, materials, decor, obstacles, vehicles);
+  // Put both vehicles directly in front of the player's starting view and close enough to board.
+  // The camera initially faces -Z, so vehicles behind the spawn are easy to miss entirely.
+  makeJeep(-5, 17, materials, decor, obstacles, vehicles);
+  makePlane(5, 17, materials, decor, obstacles, vehicles);
 
   // Fire teams have a clear starting lane so the first fight begins immediately.
   for (let i = 0; i < 7; i++) {
