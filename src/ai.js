@@ -102,7 +102,7 @@ export function updateAI(dt, world, player, callbacks) {
       target = { position: player.position, isPlayer: true };
       distance = distanceToPlayer;
     } else if (nearestAlly) {
-      target = { position: nearestAlly.unit.position, isPlayer: false };
+      target = { position: nearestAlly.unit.position, isPlayer: false, unit: nearestAlly.unit };
       distance = nearestAlly.distance;
     }
     const destination = target ? { x: target.position.x, z: target.position.z } : objective;
@@ -135,7 +135,7 @@ export function updateAI(dt, world, player, callbacks) {
     const nearestEnemy = nearestUnit(ally, enemies);
     let target = nearestEnemy ? nearestEnemy.unit : null;
     let distance = nearestEnemy ? nearestEnemy.distance : Infinity;
-    const fallback = { x: player.position.x + u.formationOffsetX || player.position.x, z: Math.max(player.position.z - 7, -8) };
+    const fallback = { x: player.position.x + (u.formationOffsetX ?? 0), z: Math.max(player.position.z - 7, -8) };
     if (!target) {
       const toFallback = new THREE.Vector3(fallback.x - ally.position.x, 0, fallback.z - ally.position.z);
       if (toFallback.length() > 4) walk(ally, desiredDirection(ally, fallback, world.obstacles, "ally"), 2.0, dt, world);
