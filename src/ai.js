@@ -44,8 +44,14 @@ function walk(unit, direction, speed, dt, world) {
     const nextZ = unit.position.z + direction.z * speed * dt;
     const clear = (x, z) => world.obstacles.every((obstacle) => {
       const dx = x - obstacle.x, dz = z - obstacle.z;
-      const radius = obstacle.radius + .72;
-      return dx * dx + dz * dz > radius * radius;
+      const distanceSq = dx * dx + dz * dz;
+      const radius = obstacle.radius + .42;
+      if (distanceSq >= radius * radius) return true;
+      // Units occasionally spawn next to cover. Allow them to escape an overlap instead of freezing.
+      const oldDx = unit.position.x - obstacle.x;
+      const oldDz = unit.position.z - obstacle.z;
+      const oldDistanceSq = oldDx * oldDx + oldDz * oldDz;
+      return oldDistanceSq < radius * radius && distanceSq > oldDistanceSq + .0001;
     });
     if (clear(nextX, nextZ)) {
       unit.position.x = nextX;
