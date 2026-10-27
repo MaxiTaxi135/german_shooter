@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { WEAPONS } from "./config.js";
+import { raycastTerrain } from "./world.js";
 
 export class WeaponInventory {
   constructor(startingBonds = 200) {
@@ -104,9 +105,13 @@ export function findEnemyHit(camera, enemies, occluders = [], maxDistance = 260)
 
   const worldHits = occluders.length ? raycaster.intersectObjects(occluders, false) : [];
   const wallHit = worldHits.find((hit) => hit.distance > .22);
-  // Real scenery meshes stop bullets. A target behind a wall or tank cannot be shot through it.
-  if (wallHit && (!soldierHit || wallHit.distance < soldierHit.distance - .12)) {
-    return { environment: true, point: wallHit.point, distance: wallHit.distance, object: wallHit.object };
+  const terrainHit = raycastTerrain(origin, direction, maxDistance);
+  const blockers = [wallHit, terrainHit].filter((hit) => hit && hit.distance > .22).sort((a, b) => a.distance - b.distance);
+  const firstBlocker = blockers[0] || null;
+  // Solid mesh geometry and the uneven ground stop bullets before the target.
+  if (firstBlocker && (!soldierHit || firstBlocker.distance < soldierHit.distance - .12)) {
+    return { environment: true, point: firstBlocker.point, distance: firstBlocker.distance,
+      object: firstBlocker.object || null, terrain: Boolean(firstBlocker.terrain) };
   }
   return soldierHit;
 }
