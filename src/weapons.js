@@ -78,21 +78,35 @@ export class WeaponInventory {
   }
 }
 
-export function findEnemyHit(camera, enemies, maxDistance = 260) {
+export function findEnemyHit(camera, enemies, occluders = [], maxDistance = 260) {
   const alive = enemies.filter((enemy) => !enemy.userData.dead && enemy.userData.health > 0);
-  if (!alive.length) return null;
-  camera.updateMatrixWorld(true);
+  camera.updateWorldMatrix(true, false);
+  camera.parent?.updateWorldMatrix(true, true);
   const origin = new THREE.Vector3();
   camera.getWorldPosition(origin);
   const direction = new THREE.Vector3();
   camera.getWorldDirection(direction);
   const raycaster = new THREE.Raycaster(origin, direction, 0, maxDistance);
-  const hits = raycaster.intersectObjects(alive, true);
-  if (!hits.length) return null;
-  let root = hits[0].object;
-  while (root && root.userData.kind !== "soldier") root = root.parent;
-  if (!root || root.userData.team !== "enemy" || root.userData.dead) return null;
-  return { soldier: root, point: hits[0].point, distance: hits[0].distance };
+
+  let soldierHit = null;
+  if (alive.length) {
+    const hits = raycaster.intersectObjects(alive, true);
+    if (hits.length) {
+      let root = hits[0].object;
+      while (root && root.userData.kind !== "soldier") root = root.parent;
+      if (root && root.userData.team === "enemy" && !root.userData.dead) {
+        soldierHit = { soldier: root, point: hits[0].point, distance: hits[0].distance };
+      }
+    }
+  }
+
+  const worldHits = occluders.length ? raycaster.intersectObjects(occluders, false) : [];
+  const wallHit = worldHits.find((hit) => hit.distance > .22);
+  // Real scenery meshes stop bullets. A target behind a wall or tank cannot be shot through it.
+  if (wallHit && (!soldierHit || wallHit.distance < soldierHit.distance - .12)) {
+    return { environment: true, point: wallHit.point, distance: wallHit.distance, object: wallHit.object };
+  }
+  return soldierHit;
 }
 
 export function addTracer(scene, from, to, color = 0xf4d19a, lifetime = .095) {
