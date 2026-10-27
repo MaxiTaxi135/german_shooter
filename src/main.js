@@ -1000,6 +1000,21 @@ if (new URLSearchParams(window.location.search).has("test")) {
         health: state.health
       };
     },
+    vehicleViews() {
+      scene.updateMatrixWorld(true);
+      camera.updateMatrixWorld(true);
+      return world.vehicles.map((vehicle) => {
+        const label = vehicle.children.find((child) => child.isSprite);
+        const point = (label || vehicle).getWorldPosition(new THREE.Vector3()).project(camera);
+        return {
+          type: vehicle.userData.vehicleType,
+          visible: vehicle.visible && (!label || label.visible),
+          screen: [point.x, point.y, point.z],
+          inView: point.z >= -1 && point.z <= 1 &&
+            Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1
+        };
+      });
+    },
     enemyPositions() {
       return world.enemies.map((unit, index) => ({
         index, dead: unit.userData.dead,
