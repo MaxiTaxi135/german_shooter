@@ -477,6 +477,18 @@ function updateEffects(dt) {
     if (!effect) { effects.splice(i, 1); continue; }
     effect.userData.life = (effect.userData.life ?? .1) - dt;
     if (effect.userData.velocity) effect.position.addScaledVector(effect.userData.velocity, dt);
+    if (effect.children?.length) {
+      for (const particle of effect.children) {
+        if (particle.userData.velocity) {
+          particle.position.addScaledVector(particle.userData.velocity, dt);
+          particle.userData.velocity.y -= 4.8 * dt;
+          particle.userData.life -= dt;
+          if (particle.material && particle.userData.life > 0) {
+            particle.material.opacity = Math.min(.9, particle.userData.life * 3.5);
+          }
+        }
+      }
+    }
     if (effect.userData.life <= 0) {
       if (effect.parent) effect.parent.remove(effect);
       effect.traverse?.((child) => {
