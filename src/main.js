@@ -779,6 +779,22 @@ if (new URLSearchParams(window.location.search).has("test")) {
       const enemy = spawnEnemyNearPlayer();
       return { spawned: Boolean(enemy), before, after: world.enemies.length, active: countLivingEnemies() };
     },
+    reinforcementTest() {
+      const beforeTotal = state.totalEnemySpawns;
+      const beforeActive = countLivingEnemies();
+      const victim = world.enemies.find((unit) => !unit.userData.dead);
+      if (!victim) return { spawned: false, reason: "no active enemy" };
+      victim.userData.dead = true;
+      victim.userData.health = 0;
+      victim.userData.corpseExpiresAt = state.elapsed + 7;
+      state.enemySpawnTimer = .001;
+      updateEnemyReinforcements(.01);
+      return {
+        spawned: state.totalEnemySpawns > beforeTotal,
+        beforeTotal, afterTotal: state.totalEnemySpawns,
+        beforeActive, afterActive: countLivingEnemies()
+      };
+    },
     reloadTest() {
       const weapon = inventory.current;
       weapon.ammo = Math.max(0, weapon.magazine - 3);
