@@ -8,7 +8,7 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
   let toastTimer = null;
   let hitTimer = null;
   let damageTimer = null;
-  let lastHud = { health: 100, sector: 1, alliesScore: 0, enemyScore: 0 };
+  let lastHud = { health: 100, sector: 1, alliesScore: 0, enemyScore: 0, hostiles: 0 };
 
   el("deploy-button").addEventListener("click", onStart);
   el("close-shop").addEventListener("click", onShopClose);
@@ -32,8 +32,8 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
     hitTimer = setTimeout(() => hitmarkerEl.classList.remove("active"), 115);
   }
 
-  function update(inventory, health, sector = 1, alliesScore = 0, enemyScore = 0) {
-    lastHud = { health, sector, alliesScore, enemyScore };
+  function update(inventory, health, sector = 1, alliesScore = 0, enemyScore = 0, hostiles = 0) {
+    lastHud = { health, sector, alliesScore, enemyScore, hostiles };
     const weapon = inventory.current;
     el("ammo-count").textContent = weapon.ammo;
     el("ammo-reserve").textContent = "/ " + weapon.reserveAmmo;
@@ -43,7 +43,7 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
     el("coins").textContent = inventory.bonds;
     el("kills").textContent = String(inventory.kills).padStart(3, "0");
     el("match-score").textContent = "ALLIES " + String(alliesScore).padStart(3, "0") + " — " + String(enemyScore).padStart(3, "0") + " AXIS";
-    el("sector").textContent = "SECTOR " + String(sector).padStart(2, "0");
+    el("sector").textContent = "HOSTILES " + String(hostiles).padStart(2, "0");
     el("shop-coins").textContent = inventory.bonds;
   }
 
@@ -72,7 +72,7 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
         el("shop-message").textContent = result.message || "UPDATED";
         if (result.ok) {
           renderShop(inventory);
-          update(inventory, lastHud.health, lastHud.sector, lastHud.alliesScore, lastHud.enemyScore);
+          update(inventory, lastHud.health, lastHud.sector, lastHud.alliesScore, lastHud.enemyScore, lastHud.hostiles);
           toast(result.message, 1200);
         } else {
           toast(result.message || "UNAVAILABLE", 1300);
