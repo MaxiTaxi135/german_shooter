@@ -640,7 +640,20 @@ if (new URLSearchParams(window.location.search).has("test")) {
       };
     },
     enemyPositions() {
-      return world.enemies.filter((unit) => !unit.userData.dead).map((unit) => [unit.position.x, unit.position.y, unit.position.z]);
+      return world.enemies.map((unit, index) => ({
+        index, dead: unit.userData.dead,
+        position: [unit.position.x, unit.position.y, unit.position.z]
+      }));
+    },
+    reloadTest() {
+      const weapon = inventory.current;
+      weapon.ammo = Math.max(0, weapon.magazine - 3);
+      const beforeReserve = weapon.reserveAmmo;
+      const result = inventory.startReload();
+      if (result.ok) inventory.update(weapon.reloadTime + .02);
+      syncHud();
+      return { ok: result.ok, ammo: weapon.ammo, magazine: weapon.magazine,
+        reserveBefore: beforeReserve, reserveAfter: weapon.reserveAmmo, reloading: inventory.reloading };
     },
     prepareTarget() {
       state.playing = false;
