@@ -39,12 +39,12 @@ If it is not live yet, open **Actions** in the repository and check the **Deploy
 - **Right mouse button**: aim
 - **R**: reload
 - **B**: open/close the field armory
-- **1–4**: equip a weapon you own
+- **1–8**: equip a weapon you own
 - **Esc**: release the mouse
 
 ## World and collision notes
 
-Scenery uses visible 3D geometry and textured materials. Movement colliders cover buildings, trees, vehicles, crates, rocks, sandbags, fences, and infantry. Buildings use individual rotated wall colliders to preserve door openings. Solid scenery also occludes line-of-sight checks. Infantry movement includes obstacle avoidance and separation so patrols can move around cover instead of freezing in place.
+Scenery uses textured 3D geometry, terrain-following roads, dynamic lighting, shadows and atmospheric fog. Physical colliders cover building wall segments (including clear door openings), trees, vehicles, crates, rocks, sandbags, fences and infantry. Weapon raycasts use the soldier body and head hitboxes, and world geometry blocks shots. NPC fire checks line of sight and target collision before applying damage. Infantry movement includes obstacle avoidance and body separation.
 
 ## Technical notes
 
