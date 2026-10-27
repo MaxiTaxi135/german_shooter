@@ -521,6 +521,104 @@ function makeTank(x, z, materials, decor, obstacles, collisionBoxes, enemy = fal
   addOrientedCollider(collisionBoxes, x, z, 0, 0, 2.12, 2.85, group.rotation.y, "tank");
 }
 
+function makeJeep(x, z, materials, decor, obstacles, vehicles) {
+  const jeep = new THREE.Group();
+  jeep.position.set(x, terrainHeight(x, z), z);
+  decor.add(jeep);
+
+  const wheels = [];
+  addBox(jeep, 0, .62, 0, 1.82, .36, 3.45, materials.oliveDark);
+  addBox(jeep, 0, .91, -.95, 1.75, .34, 1.35, materials.olive);
+  addBox(jeep, 0, 1.22, .18, 1.62, .68, 1.42, materials.olive);
+  addBox(jeep, 0, 1.66, .17, 1.5, .12, 1.42, materials.oliveDark);
+  const windscreen = addBox(jeep, 0, 1.36, -.57, 1.42, .5, .055, materials.glass, false);
+  windscreen.rotation.x = -.12;
+  addBox(jeep, 0, 1.15, -.64, 1.56, .08, .12, materials.oliveDark);
+  addBox(jeep, 0, .98, -1.73, 1.78, .16, .22, materials.steelDark);
+  addBox(jeep, 0, .54, -1.83, 1.96, .14, .15, materials.steel);
+  addBox(jeep, 0, .77, 1.75, 1.72, .12, .16, materials.steelDark);
+  addBox(jeep, 0, 1.18, .91, 1.42, .58, .055, materials.oliveDark);
+  for (const side of [-1, 1]) {
+    addBox(jeep, side * .89, 1.13, -.35, .08, .53, .96, materials.oliveDark);
+    addBox(jeep, side * .91, 1.46, -.35, .05, .08, .96, materials.olive);
+    const headlamp = addSphere(jeep, side * .68, 1.02, -1.72, .13, .13, .055, materials.brass, 8);
+    headlamp.userData.blocksShots = false;
+    const wheel = addCylinder(jeep, side * .94, .43, -.99, .39, .39, .24, materials.rubber, 14);
+    wheel.rotation.z = Math.PI / 2;
+    wheels.push(wheel);
+    const hub = addCylinder(jeep, side * 1.075, .43, -.99, .16, .16, .04, materials.steel, 10);
+    hub.rotation.z = Math.PI / 2;
+    const rearWheel = addCylinder(jeep, side * .94, .43, 1.02, .39, .39, .24, materials.rubber, 14);
+    rearWheel.rotation.z = Math.PI / 2;
+    wheels.push(rearWheel);
+    const rearHub = addCylinder(jeep, side * 1.075, .43, 1.02, .16, .16, .04, materials.steel, 10);
+    rearHub.rotation.z = Math.PI / 2;
+    addBox(jeep, side * .64, 1.24, .18, .06, .09, .88, materials.oliveDark);
+  }
+  addBox(jeep, 0, .68, -1.97, 1.45, .07, .12, materials.steel);
+  const spare = addCylinder(jeep, 0, 1.2, 1.82, .34, .34, .15, materials.rubber, 14);
+  spare.rotation.x = Math.PI / 2;
+  addCylinder(jeep, 0, 1.2, 1.92, .13, .13, .17, materials.steel, 10).rotation.x = Math.PI / 2;
+  // A clearly visible front grille and slatted hood make the vehicle easy to identify.
+  for (let i = -3; i <= 3; i++) addBox(jeep, i * .13, .91, -1.65, .035, .25, .025, materials.steelDark, false);
+
+  jeep.userData.vehicleType = "jeep";
+  jeep.userData.heading = 0;
+  jeep.userData.speed = 0;
+  jeep.userData.occupied = false;
+  jeep.userData.wheels = wheels;
+  obstacles.push({ x, z, radius: 2.1, kind: "jeep", vehicle: jeep });
+  vehicles.push(jeep);
+  return jeep;
+}
+
+function makePlane(x, z, materials, decor, obstacles, vehicles) {
+  const plane = new THREE.Group();
+  plane.position.set(x, terrainHeight(x, z) + .12, z);
+  plane.rotation.order = "YXZ";
+  decor.add(plane);
+
+  const fuselage = addCylinder(plane, 0, 1.22, .02, .18, .27, 2.55, materials.olive, 12);
+  fuselage.rotation.x = Math.PI / 2;
+  addSphere(plane, 0, 1.22, -1.25, .2, .2, .32, materials.brass, 10);
+  // Main wings, tailplane, rudder and cockpit make a complete low-poly propeller aircraft.
+  addBox(plane, 0, 1.25, -.08, 8.1, .11, 1.08, materials.olive);
+  addBox(plane, -2.9, 1.315, -.08, .52, .12, .8, materials.alliedMark, false);
+  addBox(plane, 2.9, 1.315, -.08, .52, .12, .8, materials.alliedMark, false);
+  addBox(plane, 0, 1.22, 1.62, 2.35, .075, .62, materials.olive);
+  addBox(plane, 0, 1.61, 1.76, .1, .8, .62, materials.oliveDark);
+  addBox(plane, 0, 1.7, 1.77, .16, .22, .45, materials.alliedMark, false);
+  const canopy = addSphere(plane, 0, 1.48, -.05, .24, .24, .56, materials.glass, 12);
+  canopy.userData.blocksShots = false;
+  addBox(plane, 0, 1.03, .06, .32, .1, 1.08, materials.oliveDark);
+  for (const side of [-1, 1]) {
+    const strut = addBeam(plane, [side * .3, 1.02, -.08], [side * 2.25, 1.25, -.08], .035, materials.steel, 7);
+    strut.userData.blocksShots = true;
+    const gearLeg = addBeam(plane, [side * .29, .6, -.02], [side * .63, .17, -.02], .035, materials.steelDark, 7);
+    gearLeg.userData.blocksShots = true;
+    const wheel = addCylinder(plane, side * .63, .15, -.02, .18, .18, .13, materials.rubber, 12);
+    wheel.rotation.z = Math.PI / 2;
+  }
+  const propeller = new THREE.Group();
+  propeller.position.set(0, 1.22, -1.47);
+  plane.add(propeller);
+  addBox(propeller, 0, 0, 0, .075, 1.05, .1, materials.steelDark);
+  const blade = addBox(propeller, 0, 0, 0, .075, 1.05, .1, materials.steelDark);
+  blade.rotation.z = Math.PI / 2;
+  addSphere(propeller, 0, 0, -.05, .14, .14, .14, materials.brass, 8);
+
+  plane.userData.vehicleType = "plane";
+  plane.userData.heading = 0;
+  plane.userData.speed = 0;
+  plane.userData.pitch = 0;
+  plane.userData.bank = 0;
+  plane.userData.occupied = false;
+  plane.userData.propeller = propeller;
+  obstacles.push({ x, z, radius: 3.2, kind: "plane", vehicle: plane });
+  vehicles.push(plane);
+  return plane;
+}
+
 export function createWorld(renderer) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xb1ad98);
@@ -571,6 +669,7 @@ export function createWorld(renderer) {
   const collisionBoxes = [];
   const enemies = [];
   const allies = [];
+  const vehicles = [];
 
   // A dirt lane leading into a ruined village.
   const roadMat = new THREE.MeshStandardMaterial({ color: 0x716952, map: noiseTexture("#716952", ["#9a896b", "#4a493d", "#82765b"], 12, 47), roughness: 1 });
@@ -653,6 +752,10 @@ export function createWorld(renderer) {
     obstacles.push({ x, z, radius: .45 + Math.max(rock.scale.x, rock.scale.z) * .35, kind: "rock" });
   }
 
+  // Park one usable jeep and one flyable propeller plane near the Allied start.
+  makeJeep(-8, 24, materials, decor, obstacles, vehicles);
+  makePlane(13, 31, materials, decor, obstacles, vehicles);
+
   // Fire teams have a clear starting lane so the first fight begins immediately.
   for (let i = 0; i < 7; i++) {
     const x = (i - 3) * 4.2 + (Math.random() - .5) * 1.5;
@@ -707,5 +810,5 @@ export function createWorld(renderer) {
       occluders.push(object);
     }
   });
-  return { scene, materials, terrainHeight, enemies, allies, obstacles, collisionBoxes, occluders, decor, actors, dust, sun, spawnEnemy };
+  return { scene, materials, terrainHeight, enemies, allies, vehicles, obstacles, collisionBoxes, occluders, decor, actors, dust, sun, spawnEnemy };
 }
