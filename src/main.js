@@ -304,6 +304,203 @@ function lineOfSightBlocked(x, z) {
   }
   return false;
 }
+function vehiclePositionBlocked(x, z, vehicle, clearance = 1.45) {
+  if (Math.abs(x) > SETTINGS.worldSize / 2 - 8 || Math.abs(z) > SETTINGS.worldSize / 2 - 8) return true;
+
+  for (const obstacle of world.obstacles) {
+    if (obstacle.vehicle === vehicle || obstacle.kind === "building") continue;
+    const dx = x - obstacle.x, dz = z - obstacle.z;
+    const radius = obstacle.radius + clearance;
+    if (dx * dx + dz * dz < radius * radius) return true;
+  }
+  for (const box of world.collisionBoxes) {
+    const dx = x - box.x, dz = z - box.z;
+    const cos = Math.cos(box.rotation), sin = Math.sin(box.rotation);
+    const localX = dx * cos - dz * sin;
+    const localZ = dx * sin + dz * cos;
+    if (Math.abs(localX) < box.halfX + clearance * .75 &&
+        Math.abs(localZ) < box.halfZ + clearance * .75) return true;
+  }
+  for (const soldier of [...world.enemies, ...world.allies]) {
+    if (!soldier.userData.dead &&
+        Math.hypot(x - soldier.position.x, z - soldier.position.z) < clearance + .45) return true;
+  }
+  return false;
+}
+
+function mountVehicle(vehicle) {
+  if (!vehicle || vehicle.userData.occupied) return false;
+  const data = vehicle.userData;
+  if (data.vehicleType === "plane" &&
+      vehicle.position.y > world.terrainHeight(vehicle.position.x, vehicle.position.z) + 2.8) {
+    toast("LAND THE PLANE BEFORE BOARDING", 1500);
+    return false;
+  }
+
+  data.occupied = true;
+  state.currentVehicle = vehicle;
+  state.fireHeld = false;
+  state.aimHeld = false;
+  state.jumpHeight = 0;
+  state.jumpVelocity = 0;
+  state.onGround = true;
+  state.yaw = data.heading ?? vehicle.rotation.y;
+  state.pitch = data.pitch ?? 0;
+  player.position.copy(vehicle.position);
+  player.rotation.set(0, state.yaw, 0);
+  camera.position.set(0, data.vehicleType === "plane" ? 1.72 : 1.56, data.vehicleType === "plane" ? .22 : .14);
+  camera.rotation.set(data.vehicleType === "plane" ? data.pitch : 0, 0, 0);
+  camera.fov = 76;
+  camera.updateProjectionMatrix();
+  viewModelRoot.visible = false;
+  reloadArm.visible = false;
+  magazineMesh.visible = false;
+  drumMagazineMesh.visible = false;
+  for (const bullet of reloadBullets) bullet.visible = false;
+  ui.focusCrosshair(false);
+  if (data.vehicleType === "plane") {
+    toast("FIGHTER PLANE · W THROTTLE · SPACE CLIMB · SHIFT DESCEND · E EXIT", 2600);
+  } else {
+    toast("JEEP · W/S THROTTLE · A/D STEER · E EXIT", 2300);
+  }
+  return true;
+}
+
+function enterNearbyVehicle(requiredType = null) {
+  if (state.currentVehicle) return false;
+  const nearby = world.vehicles
+    .filter((vehicle) => !vehicle.userData.occupied &&
+      (!requiredType || vehicle.userData.vehicleType === requiredType) &&
+      (vehicle.userData.vehicleType !== "plane" ||
+        vehicle.position.y <= world.terrainHeight(vehicle.position.x, vehicle.position.z) + 2.8))
+    .map((vehicle) => ({ vehicle, distance: Math.hypot(
+      vehicle.position.x - player.position.x, vehicle.position.z - player.position.z
+    ) }))
+    .filter((entry) => entry.distance <= 9.5)
+    .sort((a, b) => a.distance - b.distance)[0];
+  if (!nearby) {
+    toast(requiredType ? "MOVE CLOSER TO THE " + requiredType.toUpperCase() : "NO VEHICLE CLOSE ENOUGH", 1100);
+    return false;
+  }
+  return mountVehicle(nearby.vehicle);
+}
+
+function leaveVehicle() {
+  const vehicle = state.currentVehicle;
+  if (!vehicle) return false;
+  const data = vehicle.userData;
+  const ground = world.terrainHeight(vehicle.position.x, vehicle.position.z);
+  if (data.vehicleType === "plane" && vehicle.position.y > ground + 2.8) {
+    toast("LAND BEFORE EXITING THE PLANE", 1500);
+    return false;
+  }
+
+  const heading = data.heading ?? vehicle.rotation.y;
+  const sideOffset = data.vehicleType === "plane" ? -4.6 : -3.05;
+  const exitX = vehicle.position.x + sideOffset * Math.cos(heading);
+  const exitZ = vehicle.position.z - sideOffset * Math.sin(heading);
+  data.occupied = false;
+  data.speed = 0;
+  state.currentVehicle = null;
+  player.position.set(exitX, world.terrainHeight(exitX, exitZ), exitZ);
+  player.rotation.set(0, heading, 0);
+  state.yaw = heading;
+  state.pitch = 0;
+  state.jumpHeight = 0;
+  state.jumpVelocity = 0;
+  state.onGround = true;
+  camera.position.set(0, 0, 0);
+  camera.rotation.set(0, 0, 0);
+  camera.fov = 76;
+  camera.updateProjectionMatrix();
+  viewModelRoot.visible = true;
+  ui.focusCrosshair(false);
+  toast("BACK ON FOOT · PRESS E NEAR A VEHICLE TO BOARD", 1700);
+  return true;
+}
+
+function updateVehicleMovement(dt) {
+  const vehicle = state.currentVehicle;
+  if (!vehicle) return;
+  const data = vehicle.userData;
+  const isPlane = data.vehicleType === "plane";
+  const throttle = keys.has("KeyW");
+  const brake = keys.has("KeyS");
+  const steer = (keys.has("KeyA") ? 1 : 0) - (keys.has("KeyD") ? 1 : 0);
+
+  if (throttle) data.speed = Math.min(isPlane ? 48 : 24, data.speed + (isPlane ? 13 : 12) * dt);
+  if (brake) data.speed = Math.max(0, data.speed - (isPlane ? 20 : 18) * dt);
+  if (!throttle && !brake) data.speed = Math.max(0, data.speed - (isPlane ? .75 : 2.4) * dt);
+
+  const turnRate = isPlane
+    ? .24 + Math.min(data.speed, 42) * .007
+    : .18 + Math.min(data.speed, 22) * .052;
+  data.heading += steer * turnRate * dt;
+  const forwardX = -Math.sin(data.heading);
+  const forwardZ = -Math.cos(data.heading);
+  const nx = vehicle.position.x + forwardX * data.speed * dt;
+  const nz = vehicle.position.z + forwardZ * data.speed * dt;
+  const oldGroundY = world.terrainHeight(vehicle.position.x, vehicle.position.z) + (isPlane ? .12 : 0);
+  const airborne = isPlane && vehicle.position.y > oldGroundY + .75;
+
+  if (airborne) {
+    if (!vehiclePositionBlocked(nx, nz, vehicle, 1.25)) {
+      vehicle.position.x = nx;
+      vehicle.position.z = nz;
+    }
+  } else {
+    const clearance = isPlane ? 2.5 : 1.5;
+    if (!vehiclePositionBlocked(nx, nz, vehicle, clearance)) {
+      vehicle.position.x = nx;
+      vehicle.position.z = nz;
+    } else {
+      if (!vehiclePositionBlocked(nx, vehicle.position.z, vehicle, clearance)) vehicle.position.x = nx;
+      if (!vehiclePositionBlocked(vehicle.position.x, nz, vehicle, clearance)) vehicle.position.z = nz;
+      if (isPlane) data.speed = Math.min(data.speed, 10);
+    }
+  }
+
+  const groundY = world.terrainHeight(vehicle.position.x, vehicle.position.z) + (isPlane ? .12 : 0);
+  if (isPlane) {
+    const climb = keys.has("Space") && data.speed > 10;
+    const descend = keys.has("ShiftLeft") || keys.has("ShiftRight");
+    const targetPitch = climb ? .3 : descend ? -.24 : 0;
+    data.pitch = THREE.MathUtils.damp(data.pitch, targetPitch, 2.9, dt);
+    data.bank = THREE.MathUtils.damp(data.bank, -steer * .32, 3.2, dt);
+    if (vehicle.position.y > groundY + .5 || (data.speed > 13 && climb)) {
+      const sink = data.speed < 12 ? 4.4 : .22;
+      vehicle.position.y += (Math.sin(data.pitch) * data.speed - sink) * dt;
+    } else {
+      vehicle.position.y = groundY;
+      data.pitch = Math.max(0, data.pitch - dt * 1.2);
+    }
+    if (vehicle.position.y < groundY) {
+      vehicle.position.y = groundY;
+      data.pitch = 0;
+    }
+    vehicle.rotation.set(data.pitch, data.heading, data.bank, "YXZ");
+    if (data.propeller) data.propeller.rotation.z += dt * (8 + data.speed * 1.9);
+    camera.position.set(0, 1.72, .22);
+    camera.rotation.set(data.pitch, 0, 0);
+  } else {
+    vehicle.position.y = groundY;
+    vehicle.rotation.set(0, data.heading, 0);
+    camera.position.set(0, 1.56, .14);
+    camera.rotation.set(0, 0, 0);
+  }
+
+  player.position.copy(vehicle.position);
+  player.rotation.set(0, data.heading, 0);
+  state.yaw = data.heading;
+  state.pitch = isPlane ? data.pitch : 0;
+  state.jumpHeight = 0;
+  state.onGround = true;
+  state.aimHeld = false;
+  camera.fov = THREE.MathUtils.damp(camera.fov, 76, 9, dt);
+  camera.updateProjectionMatrix();
+  ui.focusCrosshair(false);
+}
+
 function movePlayer(dt) {
   if (!state.playing || ui.isShopOpen()) return;
   if (state.currentVehicle) { updateVehicleMovement(dt); return; }
