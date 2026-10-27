@@ -520,7 +520,7 @@ function updateReloadVisual() {
   const active = inventory.current;
   const progress = THREE.MathUtils.clamp(inventory.reloadElapsed / active.reloadTime, 0, 1);
   reloadArm.position.set(Math.sin(progress * Math.PI) * -.025, Math.sin(progress * Math.PI) * .035, 0);
-  if (active.type === "smg" || active.type === "lmg") {
+  if (["smg", "mp40", "lmg", "assault", "mg"].includes(active.type)) {
     magazineMesh.visible = progress > .12 && progress < .72;
     magazineMesh.position.y = THREE.MathUtils.lerp(-.52, -.75, Math.sin(progress * Math.PI));
   } else {
