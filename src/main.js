@@ -367,9 +367,8 @@ function onNpcFire({ from, to, team, target, hitChance, damage }) {
   const distance = delta.length();
   const direction = delta.clone().normalize();
   const ray = new THREE.Raycaster(from, direction, .15, Math.max(.15, distance - .3));
-  const blockers = scene.updateMatrixWorld(true) && world.occluders.length
-    ? ray.intersectObjects(world.occluders, false)
-    : [];
+  scene.updateMatrixWorld(true);
+  const blockers = world.occluders.length ? ray.intersectObjects(world.occluders, false) : [];
   const blockingHit = blockers.find((hit) => hit.distance < distance - .3);
   const end = blockingHit ? blockingHit.point : to.clone();
   effects.push(addTracer(scene, from, end, team === "ally" ? 0xe5cb8d : 0xce805e, .075));
