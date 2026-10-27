@@ -126,6 +126,7 @@ export function addTracer(scene, from, to, color = 0xf4d19a, lifetime = .095) {
 export function addImpact(scene, point, color = 0xb4a17b, lifetime = .35) {
   const group = new THREE.Group();
   group.position.copy(point);
+  group.userData.life = lifetime;
   for (let i = 0; i < 4; i++) {
     const material = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: .9 });
     const spark = new THREE.Mesh(new THREE.SphereGeometry(.025 + Math.random() * .025, 5, 5), material);
