@@ -262,6 +262,8 @@ function lineOfSightBlocked(x, z) {
   for (const obstacle of world.obstacles) {
     if (obstacle.kind === "building" || obstacle.kind === "crate" || obstacle.kind === "tank") continue;
     if (obstacle.vehicle && state.currentVehicle === obstacle.vehicle) continue;
+    if (obstacle.vehicle?.userData.vehicleType === "plane" &&
+        obstacle.vehicle.position.y > world.terrainHeight(obstacle.vehicle.position.x, obstacle.vehicle.position.z) + 2.8) continue;
     const dx = x - obstacle.x, dz = z - obstacle.z;
     const distanceSq = dx * dx + dz * dz;
     const radius = obstacle.radius + .62;
@@ -460,6 +462,11 @@ function updateVehicleMovement(dt) {
     }
   }
 
+  const vehicleObstacle = world.obstacles.find((obstacle) => obstacle.vehicle === vehicle);
+  if (vehicleObstacle) {
+    vehicleObstacle.x = vehicle.position.x;
+    vehicleObstacle.z = vehicle.position.z;
+  }
   const groundY = world.terrainHeight(vehicle.position.x, vehicle.position.z) + (isPlane ? .12 : 0);
   if (isPlane) {
     const climb = keys.has("Space") && data.speed > 10;
@@ -1005,7 +1012,12 @@ if (new URLSearchParams(window.location.search).has("test")) {
       const before = vehicle.position.clone();
       keys.add("KeyW");
       if (vehicle.userData.vehicleType === "plane") keys.add("Space");
-      updateVehicleMovement(Math.max(.01, Math.min(3, seconds)));
+      let remaining = Math.max(.01, Math.min(3, seconds));
+      while (remaining > 0) {
+        const step = Math.min(1 / 60, remaining);
+        updateVehicleMovement(step);
+        remaining -= step;
+      }
       keys.delete("KeyW");
       keys.delete("Space");
       return {
@@ -1021,6 +1033,8 @@ if (new URLSearchParams(window.location.search).has("test")) {
       if (!vehicle || vehicle.userData.vehicleType !== "plane") return { landed: false };
       vehicle.position.y = world.terrainHeight(vehicle.position.x, vehicle.position.z) + .12;
       vehicle.userData.pitch = 0;
+      vehicle.userData.bank = 0;
+      vehicle.rotation.set(0, vehicle.userData.heading, 0, "YXZ");
       player.position.copy(vehicle.position);
       return { landed: true };
     },
