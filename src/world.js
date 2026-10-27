@@ -135,6 +135,16 @@ function makeMaterials() {
     olive: new THREE.MeshStandardMaterial({ color: 0x566044, map: fabricTexture, roughness: .95 }),
     oliveDark: new THREE.MeshStandardMaterial({ color: 0x363e2e, map: fabricTexture, roughness: .95 }),
     german: new THREE.MeshStandardMaterial({ color: 0x73766b, map: fabricTexture, roughness: .95 }),
+    allied: new THREE.MeshStandardMaterial({ color: 0x596d43, map: fabricTexture, roughness: .97 }),
+    enemy: new THREE.MeshStandardMaterial({ color: 0x58636b, map: fabricTexture, roughness: .97 }),
+    alliedVest: new THREE.MeshStandardMaterial({ color: 0x3b4630, map: fabricTexture, roughness: .98 }),
+    enemyVest: new THREE.MeshStandardMaterial({ color: 0x30383c, map: fabricTexture, roughness: .98 }),
+    alliedHelmet: new THREE.MeshStandardMaterial({ color: 0x3d4b31, roughness: .92 }),
+    enemyHelmet: new THREE.MeshStandardMaterial({ color: 0x292f33, roughness: .8, metalness: .08 }),
+    alliedMark: new THREE.MeshStandardMaterial({ color: 0xd8d0ac, roughness: .95 }),
+    enemyMark: new THREE.MeshStandardMaterial({ color: 0x9a3b32, roughness: .95 }),
+    alliedGear: new THREE.MeshStandardMaterial({ color: 0x756a4f, roughness: .98 }),
+    enemyGear: new THREE.MeshStandardMaterial({ color: 0x34383a, roughness: .97 }),
     steel: new THREE.MeshStandardMaterial({ color: 0x353b39, map: metalTexture, roughness: .42, metalness: .58 }),
     steelDark: new THREE.MeshStandardMaterial({ color: 0x202523, map: metalTexture, roughness: .6, metalness: .35 }),
     rubber: new THREE.MeshStandardMaterial({ color: 0x242723, roughness: .96 }),
@@ -301,17 +311,33 @@ export function createSoldier(team, x, z, materials) {
   };
   const torso = addMesh(new THREE.CapsuleGeometry(.29, .47, 4, 8), uniform, 0, 1.22, 0, group);
   torso.scale.set(1, 1.04, .82);
-  const vest = addBox(group, 0, 1.29, .035, .53, .47, .38, allied ? materials.oliveDark : materials.german);
+  addBox(group, 0, 1.29, .035, .53, .47, .38, allied ? materials.alliedVest : materials.enemyVest);
   for (const side of [-1, 1]) {
-    addBox(group, side * .19, 1.3, .235, .12, .32, .025, materials.woodDark);
-    addBox(group, side * .25, 1.18, -.035, .14, .22, .27, materials.oliveDark);
+    addBox(group, side * .19, 1.3, .235, .12, .32, .025, allied ? materials.woodDark : materials.enemyGear);
+    addBox(group, side * .25, 1.18, -.035, .14, .22, .27, allied ? materials.alliedGear : materials.enemyGear);
   }
   const head = addSphere(group, 0, 1.91, .015, .17, .205, .16, materials.skin);
   head.userData.hitZone = "head";
-  const helmet = addSphere(group, 0, 2.08, -.005, .22, .12, .215, allied ? materials.oliveDark : materials.german);
+  const helmet = addSphere(group, 0, 2.08, -.005, allied ? .22 : .235, allied ? .12 : .105, allied ? .215 : .22,
+    allied ? materials.alliedHelmet : materials.enemyHelmet);
   helmet.userData.hitZone = "head";
-  helmet.scale.y = .87;
-  addBox(group, 0, 2.035, .155, .21, .035, .035, materials.oliveDark);
+  helmet.scale.y = allied ? .87 : .8;
+  addBox(group, 0, 2.035, .155, .21, .035, .035, allied ? materials.alliedHelmet : materials.enemyHelmet);
+
+  // Strong at-a-glance silhouettes: friendly olive helmets and pale armband;
+  // enemy slate-grey jacket, charcoal helmet, and muted brick-red cloth armband.
+  const teamBand = allied ? materials.alliedMark : materials.enemyMark;
+  const band = addBox(group, -.355, 1.41, .075, .17, .095, .205, teamBand);
+  band.rotation.z = .12;
+  addBox(group, -.355, 1.41, .183, .11, .022, .018, allied ? materials.oliveDark : materials.enemyGear);
+  if (allied) {
+    // Small light shoulder flash, kept plain so it reads as a team marker rather than decoration.
+    addBox(group, .29, 1.48, .17, .09, .095, .04, materials.alliedMark);
+  } else {
+    // Contrasting dark collar and side helmet band distinguish the field-grey uniform.
+    addBox(group, 0, 1.53, .205, .31, .055, .045, materials.enemyGear);
+    addBox(group, .215, 2.075, .008, .025, .045, .24, materials.enemyMark);
+  }
 
   // Dedicated invisible body and head volumes make hit registration consistent even
   // when a ray passes through gaps between the low-poly clothing parts.
@@ -327,7 +353,8 @@ export function createSoldier(team, x, z, materials) {
   headHitbox.castShadow = false;
   headHitbox.receiveShadow = false;
   group.add(headHitbox);
-  const pack = addBox(group, 0, 1.25, -.28, .32, .42, .17, materials.oliveDark);
+  const pack = addBox(group, 0, 1.25, -.28, allied ? .32 : .35, allied ? .42 : .46, .17,
+    allied ? materials.alliedGear : materials.enemyGear);
   pack.rotation.x = -.08;
   const legs = [];
   const arms = [];
@@ -626,32 +653,31 @@ export function createWorld(renderer) {
   }
 
   // Fire teams have a clear starting lane so the first fight begins immediately.
-  for (let i = 0; i < 9; i++) {
-    const x = (i - 4) * 4.2 + (Math.random() - .5) * 1.5;
+  for (let i = 0; i < 7; i++) {
+    const x = (i - 3) * 4.2 + (Math.random() - .5) * 1.5;
     const z = -25 - Math.random() * 55;
     enemies.push(createSoldier("enemy", x, z, materials));
     actors.add(enemies[enemies.length - 1]);
   }
-  for (let i = 0; i < 6; i++) {
-    const x = -11 + (i % 3) * 4.8 + (Math.random() - .5) * 1.2;
+  for (let i = 0; i < 2; i++) {
+    const x = i === 0 ? -4.2 : 4.2;
     const z = 29 + Math.floor(i / 3) * 4.5;
     allies.push(createSoldier("ally", x, z, materials));
     actors.add(allies[allies.length - 1]);
   }
   // Extra patrols around the village.
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 5; i++) {
     const side = i % 2 ? -1 : 1;
     const x = side * (35 + Math.random() * 28);
     const z = -90 - Math.random() * 110;
     enemies.push(createSoldier("enemy", x, z, materials));
     actors.add(enemies[enemies.length - 1]);
   }
-  for (let i = 0; i < 3; i++) {
-    const x = 15 + i * 5;
-    const z = 12 + Math.random() * 8;
-    allies.push(createSoldier("ally", x, z, materials));
-    actors.add(allies[allies.length - 1]);
-  }
+  // Keep a small squad near the player; the player remains the main combatant.
+  const lastAllyX = 0;
+  const lastAllyZ = 15 + Math.random() * 3;
+  allies.push(createSoldier("ally", lastAllyX, lastAllyZ, materials));
+  actors.add(allies[allies.length - 1]);
 
   const dust = [];
   const dustMaterial = new THREE.MeshBasicMaterial({ color: 0xe5d3a9, transparent: true, opacity: .26, depthWrite: false });
@@ -664,11 +690,19 @@ export function createWorld(renderer) {
     dust.push(point);
   }
 
+  function spawnEnemy(x, z) {
+    const soldier = createSoldier("enemy", x, z, materials);
+    soldier.userData.spawnedAt = performance.now();
+    actors.add(soldier);
+    enemies.push(soldier);
+    return soldier;
+  }
+
   const occluders = [];
   decor.traverse((object) => {
     if (object.isMesh && object.userData.blocksShots && !object.userData.dust && !object.userData.smoke) {
       occluders.push(object);
     }
   });
-  return { scene, materials, terrainHeight, enemies, allies, obstacles, collisionBoxes, occluders, decor, actors, dust, sun };
+  return { scene, materials, terrainHeight, enemies, allies, obstacles, collisionBoxes, occluders, decor, actors, dust, sun, spawnEnemy };
 }
