@@ -306,8 +306,9 @@ function lineOfSightBlocked(x, z) {
   }
   return false;
 }
-function vehiclePositionBlocked(x, z, vehicle, clearance = 1.45) {
+function vehiclePositionBlocked(x, z, vehicle, clearance = 1.45, ignoreGroundGeometry = false) {
   if (Math.abs(x) > SETTINGS.worldSize / 2 - 8 || Math.abs(z) > SETTINGS.worldSize / 2 - 8) return true;
+  if (ignoreGroundGeometry) return false;
 
   for (const obstacle of world.obstacles) {
     if (obstacle.vehicle === vehicle || obstacle.kind === "building") continue;
@@ -443,10 +444,10 @@ function updateVehicleMovement(dt) {
   const nx = vehicle.position.x + forwardX * data.speed * dt;
   const nz = vehicle.position.z + forwardZ * data.speed * dt;
   const oldGroundY = world.terrainHeight(vehicle.position.x, vehicle.position.z) + (isPlane ? .12 : 0);
-  const airborne = isPlane && vehicle.position.y > oldGroundY + .75;
+  const airborne = isPlane && vehicle.position.y > oldGroundY + 5.5;
 
   if (airborne) {
-    if (!vehiclePositionBlocked(nx, nz, vehicle, 1.25)) {
+    if (!vehiclePositionBlocked(nx, nz, vehicle, 1.25, true)) {
       vehicle.position.x = nx;
       vehicle.position.z = nz;
     }
