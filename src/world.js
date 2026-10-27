@@ -492,13 +492,13 @@ export function createWorld(renderer) {
     const x = side * (35 + Math.random() * 28);
     const z = -90 - Math.random() * 110;
     enemies.push(createSoldier("enemy", x, z, materials));
-    decor.add(enemies[enemies.length - 1]);
+    actors.add(enemies[enemies.length - 1]);
   }
   for (let i = 0; i < 3; i++) {
     const x = 15 + i * 5;
     const z = 12 + Math.random() * 8;
     allies.push(createSoldier("ally", x, z, materials));
-    decor.add(allies[allies.length - 1]);
+    actors.add(allies[allies.length - 1]);
   }
 
   const dust = [];
