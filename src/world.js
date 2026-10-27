@@ -333,7 +333,7 @@ function makeBush(x, z, size, materials, decor) {
       .42 * size, .32 * size, .4 * size, i % 2 ? materials.leaf : materials.leaf2, 9);
   }
 }
-function makeCrate(x, z, materials, decor, obstacles) {
+function makeCrate(x, z, materials, decor, obstacles, collisionBoxes) {
   const group = new THREE.Group();
   group.position.set(x, terrainHeight(x, z) + .42, z);
   group.rotation.y = Math.random() * Math.PI;
@@ -345,6 +345,7 @@ function makeCrate(x, z, materials, decor, obstacles) {
   }
   addBox(group, 0, .42, 0, .88, .065, .88, materials.woodDark);
   obstacles.push({ x, z, radius: .7, kind: "crate" });
+  addOrientedCollider(collisionBoxes, x, z, 0, 0, .47, .47, group.rotation.y, "crate");
 }
 function makeSandbag(x, z, rot, materials, decor, obstacles) {
   const bag = addMesh(new THREE.CapsuleGeometry(.23, .36, 3, 7), materials.sandbag, x, terrainHeight(x, z) + .28, z, decor);
@@ -353,12 +354,12 @@ function makeSandbag(x, z, rot, materials, decor, obstacles) {
   obstacles.push({ x, z, radius: .34, kind: "sandbag" });
   return bag;
 }
-function addOrientedCollider(list, baseX, baseZ, localX, localZ, halfX, halfZ, rotation) {
+function addOrientedCollider(list, baseX, baseZ, localX, localZ, halfX, halfZ, rotation, kind = "building-wall") {
   const c = Math.cos(rotation), s = Math.sin(rotation);
   list.push({
     x: baseX + localX * c + localZ * s,
     z: baseZ - localX * s + localZ * c,
-    halfX, halfZ, rotation, kind: "building-wall",
+    halfX, halfZ, rotation, kind,
     radius: Math.hypot(halfX, halfZ)
   });
 }
@@ -405,7 +406,7 @@ function makeHouse(x, z, materials, decor, obstacles, collisionBoxes, ruined = f
   }
   obstacles.push({ x, z, radius: Math.hypot(w / 2, d / 2) * .93, kind: "building" });
 }
-function makeTank(x, z, materials, decor, obstacles, enemy = false, destroyed = false) {
+function makeTank(x, z, materials, decor, obstacles, collisionBoxes, enemy = false, destroyed = false) {
   const group = new THREE.Group();
   group.position.set(x, terrainHeight(x, z), z);
   group.rotation.y = (Math.random() - .5) * .22;
@@ -440,6 +441,7 @@ function makeTank(x, z, materials, decor, obstacles, enemy = false, destroyed = 
     }
   }
   obstacles.push({ x, z, radius: 3.25, kind: "tank" });
+  addOrientedCollider(collisionBoxes, x, z, 0, 0, 2.12, 2.85, group.rotation.y, "tank");
 }
 
 export function createWorld(renderer) {
@@ -495,7 +497,15 @@ export function createWorld(renderer) {
 
   // A dirt lane leading into a ruined village.
   const roadMat = new THREE.MeshStandardMaterial({ color: 0x716952, map: noiseTexture("#716952", ["#9a896b", "#4a493d", "#82765b"], 12, 47), roughness: 1 });
-  const road = addMesh(new THREE.PlaneGeometry(12, 250), roadMat, 0, .012, -85, decor, false);
+  const roadGeometry = new THREE.PlaneGeometry(12, 250, 14, 200);
+  const roadPositions = roadGeometry.attributes.position;
+  for (let i = 0; i < roadPositions.count; i++) {
+    const localX = roadPositions.getX(i);
+    const worldZ = -roadPositions.getY(i) - 85;
+    roadPositions.setZ(i, terrainHeight(localX, worldZ) + .045);
+  }
+  roadGeometry.computeVertexNormals();
+  const road = addMesh(roadGeometry, roadMat, 0, 0, -85, decor, false);
   road.rotation.x = -Math.PI / 2;
   road.receiveShadow = true;
 
@@ -533,7 +543,7 @@ export function createWorld(renderer) {
     const x = (Math.random() - .5) * 180;
     const z = -190 + Math.random() * 245;
     if (Math.abs(x) < 11 && z > -140 && z < 30) continue;
-    if (Math.random() < .62) makeCrate(x, z, materials, decor, obstacles);
+    if (Math.random() < .62) makeCrate(x, z, materials, decor, obstacles, collisionBoxes);
     else makeBush(x, z, .7 + Math.random() * .6, materials, decor);
   }
 
@@ -544,9 +554,9 @@ export function createWorld(renderer) {
   for (let row = 0; row < 2; row++) {
     for (let i = 0; i < 8; i++) makeSandbag(14 + row * .8, -82 + i * .8, Math.PI / 2, materials, decor, obstacles);
   }
-  makeTank(-13, -102, materials, decor, obstacles, false, true);
-  makeTank(52, -47, materials, decor, obstacles, true, false);
-  makeTank(-65, 28, materials, decor, obstacles, false, true);
+  makeTank(-13, -102, materials, decor, obstacles, collisionBoxes, false, true);
+  makeTank(52, -47, materials, decor, obstacles, collisionBoxes, true, false);
+  makeTank(-65, 28, materials, decor, obstacles, collisionBoxes, false, true);
 
   // Snapped fence posts and barbed-wire coils.
   for (let i = 0; i < 18; i++) {
