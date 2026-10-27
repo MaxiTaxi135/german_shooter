@@ -263,7 +263,7 @@ function movePlayer(dt) {
   player.position.y = world.terrainHeight(player.position.x, player.position.z) + state.jumpHeight;
   const sprinting = keys.has("ShiftLeft") || keys.has("ShiftRight");
   const bob = moving && state.onGround ? Math.sin(state.elapsed * (sprinting ? 14 : 10)) * (sprinting ? .028 : .016) : 0;
-  camera.position.y = bob;
+  camera.position.y = 1.68 + bob;
   const targetFov = state.aimHeld ? 48 : 76;
   camera.fov = THREE.MathUtils.damp(camera.fov, targetFov, 9, dt);
   camera.updateProjectionMatrix();
