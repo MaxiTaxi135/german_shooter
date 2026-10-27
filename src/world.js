@@ -355,7 +355,7 @@ export function createWorld(renderer) {
   scene.fog = new THREE.FogExp2(0xb1ad98, .00225);
   const materials = makeMaterials();
 
-  const sky = addMesh(new THREE.SphereGeometry(600, 32, 16), new THREE.MeshBasicMaterial({
+  const sky = addMesh(new THREE.SphereGeometry(500, 32, 16), new THREE.MeshBasicMaterial({
     map: gradientSky(), side: THREE.BackSide, fog: false, depthWrite: false
   }), 0, 0, 0, scene, false);
   sky.renderOrder = -10;
