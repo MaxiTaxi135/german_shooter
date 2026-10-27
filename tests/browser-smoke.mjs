@@ -63,7 +63,8 @@ try {
   assert.equal(stats.ready, true, "game did not initialise");
   assert.equal(stats.weaponCount, 8, "expected eight purchasable weapons");
   assert.ok(stats.enemyCount >= 12, "expected a usable enemy group");
-  assert.ok(stats.allyCount >= 6, "expected allied infantry");
+  assert.equal(stats.allyCount, 3, "the player squad should contain exactly three allies");
+  assert.notEqual(stats.teamMarkers.ally, stats.teamMarkers.enemy, "ally and enemy uniform markers must differ");
   assert.ok(stats.occluderCount > 100, "scenery raycast blockers were not registered");
   assert.ok(stats.collisionCount > 150, "world collision volumes were not registered");
   assert.ok(await page.locator("canvas").count() >= 1, "Three.js canvas is missing");
@@ -115,6 +116,11 @@ try {
   assert.equal(reload.reloading, false, "reload did not finish");
   assert.equal(reload.ammo, reload.magazine, "reload did not fill the magazine");
   assert.ok(reload.reserveAfter < reload.reserveBefore, "reload did not consume reserve ammunition");
+
+  const reinforcement = await page.evaluate(() => window.__IRON_FRONT_TEST__.reinforcementTest());
+  assert.equal(reinforcement.spawned, true, "defeating an enemy should trigger infinite reinforcements");
+  assert.equal(reinforcement.afterTotal, reinforcement.beforeTotal + 1, "a reinforcement was not added to the world");
+  assert.equal(reinforcement.afterActive, reinforcement.beforeActive, "the replacement should restore the active enemy count");
 
   assert.deepEqual(pageErrors, [], "browser raised uncaught JavaScript errors");
   assert.deepEqual(criticalConsoleErrors, [], "browser reported critical console errors");
