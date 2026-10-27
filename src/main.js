@@ -407,7 +407,7 @@ function playerShoot() {
   const end = hit ? hit.point : origin.clone().add(direction.multiplyScalar(180));
   effects.push(addTracer(scene, origin.clone().add(direction.clone().multiplyScalar(.55)), end, 0xf3d399, .085));
   if (hit?.soldier) {
-    const headshot = hit.point.y > hit.soldier.position.y + 1.72;
+    const headshot = hit.zone === "head" || hit.point.y > hit.soldier.position.y + 1.72;
     const dealt = result.weapon.damage * (headshot ? 1.35 : 1);
     damageSoldier(hit.soldier, dealt, hit.point, "player");
     if (headshot) toast("HEADSHOT", 850);
