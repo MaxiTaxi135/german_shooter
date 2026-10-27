@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { SETTINGS } from "./config.js";
-import { createWorld, createWeaponModel } from "./world.js";
+import { createWorld, createWeaponModel, raycastTerrain } from "./world.js";
 import { updateAI } from "./ai.js";
 import { WeaponInventory, findEnemyHit, addTracer, addImpact } from "./weapons.js";
 import { createUI } from "./ui.js";
@@ -434,7 +434,7 @@ function onNpcFire({ from, to, team, target, hitChance, damage }) {
   const distance = baseDirection.length();
   if (distance < .05) return;
 
-  // Accuracy is represented as angular dispersion, then every shot must intersect a real target hitbox.
+  // NPC accuracy affects the bullet direction; damage only happens if the ray intersects a real hit volume.
   const direction = baseDirection.normalize();
   const accurate = Math.random() < hitChance;
   const right = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
@@ -449,11 +449,15 @@ function onNpcFire({ from, to, team, target, hitChance, damage }) {
   scene.updateMatrixWorld(true);
 
   const worldHits = world.occluders.length ? ray.intersectObjects(world.occluders, false) : [];
-  const blocker = worldHits.find((hit) => hit.distance > .15 && hit.distance < distance + .3);
-  let targetHit = null;
+  const sceneryHit = worldHits.find((hit) => hit.distance > .15 && hit.distance < distance + .3) || null;
+  const terrainHit = raycastTerrain(from, shotDirection, distance + .3);
+  const possibleBlockers = [sceneryHit, terrainHit].filter((hit) => hit && hit.distance > .15 && hit.distance < distance + .3);
+  possibleBlockers.sort((a, b) => a.distance - b.distance);
+  const blocker = possibleBlockers[0] || null;
 
-  if (!blocker && target.isPlayer && team === "enemy" && !state.respawning) {
-    // Player is a capsule-like hit volume from hips to shoulders, not a free floating health value.
+  let targetHit = null;
+  if (target.isPlayer && team === "enemy" && !state.respawning) {
+    // The player uses a capsule-like body volume, tested along the actual bullet path.
     const center = player.position.clone().add(new THREE.Vector3(0, 1.02, 0));
     const along = center.clone().sub(from).dot(shotDirection);
     if (along >= .08 && along <= distance + .8) {
@@ -463,24 +467,28 @@ function onNpcFire({ from, to, team, target, hitChance, damage }) {
         targetHit = { point: closest, distance: along, isPlayer: true };
       }
     }
-  } else if (!blocker && target.unit && !target.unit.userData.dead) {
-    // NPC-on-NPC shots use the target's visible body meshes as the actual hitbox.
+  } else if (target.unit && !target.unit.userData.dead) {
+    // NPC-vs-NPC fire uses target meshes and invisible hitboxes rather than a distance-only damage roll.
     const bodyHits = ray.intersectObject(target.unit, true);
     if (bodyHits.length && bodyHits[0].distance <= distance + .8) {
       targetHit = { point: bodyHits[0].point, distance: bodyHits[0].distance, unit: target.unit };
     }
   }
 
+  const blockedBeforeTarget = blocker && (!targetHit || blocker.distance < targetHit.distance - .1);
   let end = from.clone().addScaledVector(shotDirection, Math.min(distance, 80));
-  if (blocker) end = blocker.point;
+  if (blockedBeforeTarget) end = blocker.point;
   else if (targetHit) end = targetHit.point;
   effects.push(addTracer(scene, from, end, team === "ally" ? 0xe5cb8d : 0xce805e, .075));
 
-  if (blocker) {
-    effects.push(addImpact(scene, blocker.point, 0xb5a27d, .2));
+  if (blockedBeforeTarget) {
+    effects.push(addImpact(scene, blocker.point, blocker.terrain ? 0x8c8165 : 0xb5a27d, .2));
     return;
   }
-  if (!targetHit) return;
+  if (!targetHit) {
+    if (blocker) effects.push(addImpact(scene, blocker.point, blocker.terrain ? 0x8c8165 : 0xb5a27d, .2));
+    return;
+  }
 
   if (targetHit.isPlayer) {
     state.health = Math.max(0, state.health - damage);
