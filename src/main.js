@@ -101,10 +101,16 @@ for (let i = 0; i < 8; i++) {
   camera.add(bullet);
   reloadBullets.push(bullet);
 }
-const magazineMesh = new THREE.Mesh(new THREE.BoxGeometry(.09, .23, .12), world.materials.steelDark);
+const magazineMesh = new THREE.Mesh(new THREE.BoxGeometry(.115, .25, .14), world.materials.steelDark);
 magazineMesh.position.set(.16, -.44, -.73);
 magazineMesh.visible = false;
 camera.add(magazineMesh);
+const drumMagazineMesh = new THREE.Mesh(new THREE.CylinderGeometry(.135, .135, .13, 16),
+  new THREE.MeshStandardMaterial({ color: 0x262b28, roughness: .55, metalness: .25 }));
+drumMagazineMesh.rotation.x = Math.PI / 2;
+drumMagazineMesh.position.set(.15, -.45, -.73);
+drumMagazineMesh.visible = false;
+camera.add(drumMagazineMesh);
 
 const muzzleLight = new THREE.PointLight(0xffad53, 0, 3.3, 2);
 muzzleLight.position.set(.19, -.19, -1.72);
@@ -521,30 +527,33 @@ function respawnPlayer() {
 function hideReloadVisual() {
   reloadArm.visible = false;
   magazineMesh.visible = false;
+  drumMagazineMesh.visible = false;
   for (const bullet of reloadBullets) bullet.visible = false;
 }
 function startReloadVisual() {
   const active = inventory.current;
   reloadArm.visible = true;
-  magazineMesh.visible = ["smg", "mp40", "lmg", "assault", "mg"].includes(active.type);
-  if (["smg", "mp40", "lmg", "assault", "mg"].includes(active.type)) {
-    magazineMesh.position.set(.22, -.55, -.64);
-  }
-  for (const bullet of reloadBullets) bullet.visible = !["smg", "mp40", "lmg", "assault", "mg"].includes(active.type);
+  const usesMagazine = ["smg", "mp40", "lmg", "assault", "mg"].includes(active.type);
+  magazineMesh.visible = usesMagazine && active.type !== "smg";
+  drumMagazineMesh.visible = active.type === "smg";
+  if (usesMagazine) magazineMesh.position.set(.22, -.55, -.64);
+  if (active.type === "smg") drumMagazineMesh.position.set(.15, -.47, -.73);
+  for (const bullet of reloadBullets) bullet.visible = !usesMagazine;
 }
 function updateReloadVisual() {
   if (!inventory.reloading) {
-    reloadArm.visible = false;
-    magazineMesh.visible = false;
-    for (const bullet of reloadBullets) bullet.visible = false;
+    hideReloadVisual();
     return;
   }
   const active = inventory.current;
   const progress = THREE.MathUtils.clamp(inventory.reloadElapsed / active.reloadTime, 0, 1);
   reloadArm.position.set(Math.sin(progress * Math.PI) * -.025, Math.sin(progress * Math.PI) * .035, 0);
   if (["smg", "mp40", "lmg", "assault", "mg"].includes(active.type)) {
-    magazineMesh.visible = progress > .12 && progress < .72;
+    const magazineVisible = progress > .12 && progress < .72;
+    magazineMesh.visible = magazineVisible && active.type !== "smg";
+    drumMagazineMesh.visible = magazineVisible && active.type === "smg";
     magazineMesh.position.y = THREE.MathUtils.lerp(-.52, -.75, Math.sin(progress * Math.PI));
+    drumMagazineMesh.position.y = THREE.MathUtils.lerp(-.43, -.68, Math.sin(progress * Math.PI));
   } else {
     const count = Math.min(8, active.magazine - active.ammo, active.reserveAmmo);
     const span = .52;
@@ -564,6 +573,7 @@ function updateReloadVisual() {
   }
   if (progress > .78) {
     magazineMesh.visible = false;
+    drumMagazineMesh.visible = false;
     for (const bullet of reloadBullets) bullet.visible = false;
   }
 }
@@ -619,6 +629,7 @@ function animate() {
     if (inventory.update(dt)) {
       reloadArm.visible = false;
       magazineMesh.visible = false;
+      drumMagazineMesh.visible = false;
       for (const bullet of reloadBullets) bullet.visible = false;
       toast("WEAPON READY", 800);
       syncHud();
