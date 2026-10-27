@@ -1,126 +1,74 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>IRON FRONT | WWII</title>
-<style>
-:root{--cream:#e8e0c8;--olive:#9ba47d;--gold:#d8b56d;--red:#b85e4e}
-*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101512;color:var(--cream);font-family:Arial,Helvetica,sans-serif}
-canvas{display:block}#ui{position:fixed;inset:0;pointer-events:none;text-shadow:0 2px 5px #000}
-#top{position:absolute;top:18px;left:50%;transform:translateX(-50%);display:flex;gap:20px;align-items:center;background:#111912b8;border:1px solid #b7b49b55;padding:10px 18px;letter-spacing:2px;font-size:12px}
-#brand{font-weight:900;color:#e7d9b2;font-size:14px}#score{color:#d8b56d;font-weight:bold}
-#hud{position:absolute;bottom:22px;left:24px;display:flex;align-items:end;gap:18px}
-.panel{background:linear-gradient(135deg,#111913df,#24251ddf);border:1px solid #b8b99a55;padding:12px 15px;box-shadow:0 6px 20px #0005}
-#ammo{font-size:30px;font-weight:800;letter-spacing:1px}#ammo small{font-size:13px;color:#aaa990}#weapon{font-size:11px;letter-spacing:2px;color:#d8b56d;margin-top:4px}
-#health{width:150px;height:5px;background:#48483a;margin-top:8px}#health>i{display:block;height:100%;width:100%;background:#b9b98a}
-#right{position:absolute;right:24px;bottom:24px;text-align:right;font-size:11px;letter-spacing:1px;line-height:1.8;color:#e3dcc7}
-#toast{position:absolute;top:22%;left:50%;transform:translateX(-50%);font-size:13px;letter-spacing:3px;font-weight:bold;color:#f0d89d;opacity:0;transition:opacity .2s}
-#hit{position:absolute;left:50%;top:50%;width:24px;height:24px;transform:translate(-50%,-50%);opacity:0}
-#hit:before,#hit:after{content:"";position:absolute;background:#e9e0c7}#hit:before{width:2px;height:24px;left:11px}#hit:after{height:2px;width:24px;top:11px}
-#cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:18px;height:18px;opacity:.9}
-#cross i{position:absolute;background:#e9e0c7;box-shadow:0 1px 3px #000}#cross i:nth-child(1){width:2px;height:6px;left:8px;top:0}#cross i:nth-child(2){width:2px;height:6px;left:8px;bottom:0}#cross i:nth-child(3){height:2px;width:6px;left:0;top:8px}#cross i:nth-child(4){height:2px;width:6px;right:0;top:8px}
-#overlay{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 38%,#4a4b3b8c,#0a100deF 70%),linear-gradient(#19241b,#111510);z-index:10}
-.card{width:min(560px,92vw);padding:34px 38px;background:#111711e8;border:1px solid #b7b49b66;box-shadow:0 30px 90px #0009}
-.kicker{font-size:10px;letter-spacing:5px;color:#c5b77f}.title{font-size:clamp(35px,7vw,65px);font-weight:900;line-height:.9;letter-spacing:-2px;margin:14px 0}.title span{color:#c5b77f}.desc{color:#b6b9a4;font-size:13px;line-height:1.7;max-width:420px}
-button{border:0;background:#c5b77f;color:#172017;font-weight:900;letter-spacing:2px;padding:15px 24px;margin-top:20px;cursor:pointer}button:hover{background:#e3d5a1}
-.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-top:22px;color:#b4b8a3;font-size:11px}.controls b{color:#e8e0c8}
-#shop{display:none;position:fixed;inset:0;z-index:8;background:#090e0cd9;place-items:center;pointer-events:auto}
-.shopbox{width:min(620px,94vw);background:#151b15;border:1px solid #b7b49b66;padding:26px}
-.shophead{display:flex;justify-content:space-between;align-items:center;letter-spacing:2px}.guns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
-.gun{padding:14px;background:#242b22;border:1px solid #707762;cursor:pointer}.gun:hover{border-color:#d8b56d}.gun strong{display:block;margin-bottom:7px}.gun small{color:#b6b9a4}.gun em{float:right;color:#d8b56d;font-style:normal}
-#damage{position:absolute;inset:0;background:#8c1c14;opacity:0;pointer-events:none}
-@media(max-width:600px){#top{gap:8px;font-size:9px;padding:8px}#brand{font-size:11px}#right{display:none}.controls{grid-template-columns:1fr}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11160f">
+  <meta name="description" content="IRON FRONT: WWII, a browser-based first-person battlefield prototype.">
+  <title>IRON FRONT: WWII</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles/main.css">
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+  </script>
+  <script type="module" src="./src/main.js"></script>
 </head>
 <body>
-<div id="ui">
- <div id="top"><span id="brand">IRON FRONT</span><span>WESTERN EUROPE · 1944</span><span id="score">USA 000 — 000 AXIS</span><span id="sector">SECTOR 01</span></div>
- <div id="toast"></div><div id="cross"><i></i><i></i><i></i><i></i></div><div id="hit"></div><div id="damage"></div>
- <div id="hud"><div class="panel"><div id="ammo">30 <small>/ 120</small></div><div id="weapon">M1 GARAND</div><div id="health"><i></i></div></div><div class="panel" style="font-size:11px;line-height:1.8">HEALTH <b id="hp">100</b><br>WAR BONDS <b id="coins">120</b></div></div>
- <div id="right">W A S D &nbsp; MOVE<br>SHIFT &nbsp; SPRINT<br>SPACE &nbsp; VAULT<br>R &nbsp; RELOAD<br>B &nbsp; FIELD ARMORY<br>HOLD RMB &nbsp; AIM<br>HOLD LMB &nbsp; FIRE<br>ESC &nbsp; RELEASE MOUSE</div>
-</div>
-<div id="overlay"><div class="card"><div class="kicker">ALLIED EXPEDITIONARY FORCE</div><div class="title">IRON <span>FRONT</span><br>WWII</div><p class="desc">A stylized first-person battlefield set in 1944. Fight beside allied infantry, cross a shattered village, and push through the front line. Built as a playable browser prototype.</p><div style="color:#d8b56d;font-size:11px;letter-spacing:2px;margin-top:18px">OPERATION: BROKEN HEDGE</div><button id="start">DEPLOY TO FRONT →</button><div class="controls"><div><b>WASD</b> Move</div><div><b>SPACE</b> Jump</div><div><b>R</b> Reload</div><div><b>B</b> Field armory</div><div><b>RMB</b> Aim down sights</div><div><b>Hold LMB</b> Automatic fire</div></div></div></div>
-<div id="shop"><div class="shopbox"><div class="shophead"><div><div class="kicker">QUARTERMASTER</div><h2 style="margin:8px 0">FIELD ARMORY</h2></div><div>WAR BONDS: <b id="shopcoins">120</b></div></div><p class="desc">Choose a weapon for the next push. Your current weapon stays available.</p><div class="guns" id="guns"></div><button id="closeShop">RETURN TO BATTLE</button></div></div>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
-<script>
-(()=> {
-const $=id=>document.getElementById(id);
-if(!window.THREE){$('toast').textContent='Could not load 3D engine. Check your internet connection.';$('toast').style.opacity=1;return}
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x9a9a82);scene.fog=new THREE.FogExp2(0x9a9a82,.0022);
-const camera=new THREE.PerspectiveCamera(76,innerWidth/innerHeight,.08,1100);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xc9d7df,0x464337,2.05));
-const sun=new THREE.DirectionalLight(0xffe2b1,3.2);sun.position.set(-120,180,70);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-180;sun.shadow.camera.right=180;sun.shadow.camera.top=180;sun.shadow.camera.bottom=-180;sun.shadow.bias=-.00025;scene.add(sun);
-const mat=(c,r=.9,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
-const M={soil:mat(0x5d5945),mud:mat(0x484638),grass:mat(0x62674c),leaf:mat(0x384634),leaf2:mat(0x536043),bark:mat(0x493b2b),wood:mat(0x796344),wood2:mat(0x493b2b),stone:mat(0x77766a),brick:mat(0x746455),roof:mat(0x4a4940),sand:mat(0xaca083),olive:mat(0x5c6446),olive2:mat(0x394432),steel:mat(0x353a37,.48,.65),dark:mat(0x1d211f,.6,.25),rubber:mat(0x222522),skin:mat(0xb08c6b),usa:mat(0x68745a),german:mat(0x77796b),red:mat(0x8c3d30),brass:mat(0x9a7840,.45,.6),glass:mat(0x667d77,.22,.6)};
-function mesh(g,m,x,y,z,par=scene){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;par.add(o);return o}
-function box(par,x,y,z,sx,sy,sz,m){return mesh(new THREE.BoxGeometry(sx,sy,sz),m,x,y,z,par)}
-function cyl(par,x,y,z,rt,rb,h,m,n=12){return mesh(new THREE.CylinderGeometry(rt,rb,h,n),m,x,y,z,par)}
-function sphere(par,x,y,z,sx,sy,sz,m){const o=mesh(new THREE.SphereGeometry(1,14,10),m,x,y,z,par);o.scale.set(sx,sy,sz);return o}
-function beam(par,a,b,r,m){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=new THREE.Vector3().subVectors(B,A);const o=mesh(new THREE.CylinderGeometry(r,r,d.length(),8),m,...A.clone().add(B).multiplyScalar(.5).toArray(),par);o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());return o}
-function noiseTex(base,spots,repeat=12){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle=base;x.fillRect(0,0,256,256);for(let i=0;i<3200;i++){x.globalAlpha=Math.random()*.22;x.fillStyle=spots[i%spots.length];const s=Math.random()*3+1;x.fillRect(Math.random()*256,Math.random()*256,s,s)}x.globalAlpha=1;const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(repeat,repeat);t.colorSpace=THREE.SRGBColorSpace;return t}
-const groundMat=new THREE.MeshStandardMaterial({map:noiseTex('#555744',['#77765b','#343b2b','#8b8062','#414535'],28),roughness:1});
-const floor=mesh(new THREE.PlaneGeometry(1500,1500,1,1),groundMat,0,-.3,0);floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;
-function terrainY(x,z){return .7*Math.sin(x*.026)*Math.cos(z*.021)+.45*Math.sin((x+z)*.045)+.2*Math.cos(z*.09)}
-// subtle rolling terrain with a dense smooth grid
-scene.remove(floor);const tg=new THREE.PlaneGeometry(1500,1500,180,180);const p=tg.attributes.position;for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getY(i);p.setZ(i,terrainY(x,z))}tg.computeVertexNormals();const land=mesh(tg,groundMat,0,-.05,0);land.rotation.x=-Math.PI/2;land.receiveShadow=true;
-function tree(x,z,s=1){const y=terrainY(x,z);const g=new THREE.Group();g.position.set(x,y,z);scene.add(g);cyl(g,0,2.1*s,0,.22*s,.32*s,4.2*s,M.bark,10);for(let j=0;j<4;j++){const r=(2.0-j*.32)*s;const leaf=mesh(new THREE.IcosahedronGeometry(r,1),j%2?M.leaf:M.leaf2,0,(3.0+j*.62)*s,0,g);leaf.scale.set(1,.9,1.05);leaf.rotation.y=j*1.7}for(let i=0;i<3;i++){const a=i*2.1;beam(g,[0,(1.3+i*.1)*s,0],[Math.sin(a)*1.4*s,(1.8+i*.25)*s,Math.cos(a)*1.4*s],.09*s,M.bark)}}
-function bush(x,z,s=1){const g=new THREE.Group();g.position.set(x,terrainY(x,z),z);scene.add(g);for(let i=0;i<7;i++){const a=i*2.4; sphere(g,Math.cos(a)*s*.5,.45*s+(i%2)*.12,Math.sin(a)*s*.5,.55*s,.4*s,.5*s,i%2?M.leaf:M.leaf2)}}
-function sandbag(x,y,z,rot=0){const o=mesh(new THREE.CapsuleGeometry(.34,.48,4,8),M.sand,x,y,z);o.rotation.z=Math.PI/2;o.rotation.y=rot;return o}
-function crate(x,z){const g=new THREE.Group();g.position.set(x,terrainY(x,z)+.48,z);scene.add(g);box(g,0,0,0,.95,.9,.9,M.wood);for(let k=-1;k<=1;k++)box(g,k*.29,.02,.47,.11,.78,.025,M.wood2);box(g,0,.46,0,.98,.07,.95,M.wood2);return g}
-function house(x,z,ruined=false){const g=new THREE.Group();g.position.set(x,terrainY(x,z),z);scene.add(g);const w=8+Math.random()*3,d=7+Math.random()*3,h=4.2;box(g,0,h/2,0,w,h,d,M.brick);for(const side of [-1,1]){box(g,side*w*.27,1.65,d/2+.04,1.3,1.7,.13,M.dark);box(g,side*w*.27,1.65,-d/2-.04,1.3,1.7,.13,M.dark);box(g,side*w/2+.04,1.6,0,.13,1.6,1.6,M.dark)}const roof=new THREE.Group();roof.position.y=h;g.add(roof);const r1=mesh(new THREE.BoxGeometry(w*1.1,.25,d*.6),M.roof,0,.7,d*.25,roof);r1.rotation.x=-.48;const r2=mesh(new THREE.BoxGeometry(w*1.1,.25,d*.6),M.roof,0,.7,-d*.25,roof);r2.rotation.x=.48;if(ruined){roof.rotation.z=.18;for(let i=0;i<5;i++){const rubble=box(g,(Math.random()-.5)*w,.25+Math.random()*.3,(Math.random()-.5)*d,.7,.45,.8,i%2?M.stone:M.brick);rubble.rotation.y=Math.random()*2}box(g,0,h*.8,d/2+.1,w*.7,.5,.25,M.stone)}for(let i=0;i<4;i++)box(g,(i-1.5)*.7,.2,d/2+.12,.09,.3,.1,M.wood2);return g}
-function bunker(x,z){const g=new THREE.Group();g.position.set(x,terrainY(x,z),z);scene.add(g);const body=mesh(new THREE.CylinderGeometry(3.4,3.7,2.6,8),M.stone,0,1.1,0,g);body.scale.z=.75;box(g,0,1.6,2.45,2.8,.8,.3,M.dark);box(g,0,1.9,2.6,3.5,.28,.35,M.sand);for(let i=0;i<5;i++)sandbag(x-2+i,z+2.5,.8)}
-function tank(x,z,team=0,damaged=false){const g=new THREE.Group();g.position.set(x,terrainY(x,z),z);scene.add(g);const hull=box(g,0,1.35,0,4.4,1.35,6.2,team?M.german:M.olive);hull.rotation.y=.02;box(g,0,.75,0,4.8,.42,6.5,M.dark);box(g,0,2.08,-.3,3.1,.9,3.1,team?M.german:M.olive2);cyl(g,0,2.55,-.3,.9,1.05,.3,M.olive,12);const barrel=cyl(g,0,2.55,2.0,.16,.2,3.3,M.steel,12);barrel.rotation.x=Math.PI/2;for(const side of [-1,1]){for(let i=0;i<6;i++){const wh=mesh(new THREE.CylinderGeometry(.48,.48,.24,14),M.rubber,side*2.15,.72,-2.3+i*.92,g);wh.rotation.z=Math.PI/2;const hub=mesh(new THREE.CylinderGeometry(.2,.2,.26,12),M.steel,side*2.15,.72,-2.3+i*.92,g);hub.rotation.z=Math.PI/2}box(g,side*2.18,.75,0,.35,.9,6.3,M.dark);for(let i=0;i<8;i++)box(g,side*2.38,1.1,-2.6+i*.72,.12,.14,.45,M.steel)}for(let i=0;i<6;i++)box(g,(i-2.5)*.38,2.58,-.3,.25,.09,.9,M.olive);if(damaged){const fire=sphere(g,.5,3.3,-.5,.55,.9,.55,mat(0x342a20));const smoke=[];for(let i=0;i<4;i++){const s=sphere(g,(Math.random()-.5)*.7,3.8+i*.55,-.5,.4+i*.08,.5+i*.1,.4+i*.08,mat(0x4b4b45));smoke.push(s)}}return g}
-function artillery(x,z){const g=new THREE.Group();g.position.set(x,terrainY(x,z),z);scene.add(g);box(g,0,.55,0,2.3,.5,2,M.olive2);for(let s of [-1,1]){const w=mesh(new THREE.CylinderGeometry(.48,.48,.22,16),M.rubber,s*1.1,.5,.2,g);w.rotation.z=Math.PI/2}const b=cyl(g,0,1.3,-.3,.15,.22,3,M.steel);b.rotation.x=Math.PI/2-.22;return g}
-function wire(x,z,len=10){for(let i=0;i<len;i++){const a=mesh(new THREE.TorusGeometry(.42,.045,5,10),M.steel,x+i*.9,1,z,scene);a.rotation.y=Math.PI/2;a.rotation.x=.6;beam(scene,[x+i*.9,0.2,z-.35],[x+i*.9+.9,.2,z+.35],.025,M.steel)}}
-function human(team,x,z,player=false){const g=new THREE.Group();g.position.set(x,terrainY(x,z),z);scene.add(g);g.userData={team,player,hp:player?100:100,dead:false,cd:Math.random()*2,side:Math.random()<.5?-1:1,home:new THREE.Vector3(x,0,z),phase:Math.random()*6};const uniform=team===0?M.usa:M.german,skin=M.skin;
-const torso=mesh(new THREE.CapsuleGeometry(.38,.55,4,8),uniform,0,1.35,0,g);torso.scale.set(1,.95,.72);
-const head=sphere(g,0,2.05,0,.25,.3,.24,skin);const helmet=sphere(g,0,2.27,-.015,.31,.17,.29,team===0?M.olive:M.german);helmet.scale.y=.8;
-const pack=box(g,0,1.45,-.38,.42,.55,.22,M.olive2);pack.rotation.x=-.08;
-for(const s of [-1,1]){const leg=mesh(new THREE.CapsuleGeometry(.14,.55,3,7),uniform,s*.2,.58,0,g);leg.userData.limb=true;const boot=box(g,s*.2,.16,.07,.3,.18,.42,M.dark);const arm=mesh(new THREE.CapsuleGeometry(.12,.52,3,7),uniform,s*.48,1.4,.02,g);arm.rotation.z=s*.14;arm.userData.limb=true}
-const rifle=weaponModel('rifle',g);rifle.position.set(.28,1.38,.48);rifle.rotation.x=-.08;
-const knife=mesh(new THREE.BoxGeometry(.05,.48,.025),M.steel,.48,1.08,.58,g);knife.rotation.x=.6;
-g.userData.rifle=rifle;g.userData.legs=g.children.filter(c=>c.userData.limb);g.userData.arms=g.children.filter(c=>c.userData.limb);
-return g}
-function weaponModel(type,par){const g=new THREE.Group();const wood=mat(0x6b4b2d,.85),metal=mat(0x292e2c,.42,.65),grip=mat(0x39362c);let L=type==='smg'?1.05:type==='lmg'?1.5:type==='sniper'?1.75:1.4;box(g,0,0,0,.18,.18,L*.55,wood);box(g,0,.08,L*.1,.23,.15,.42,metal);box(g,0,.04,L*.42,.11,.12,L*.6,metal);cyl(g,0,.04,L*.76,.045,.045,.7,metal,10).rotation.x=Math.PI/2;box(g,0,-.13,L*.22,.12,.27,.2,grip);box(g,0,-.18,L*.05,.14,.35,.2,wood);box(g,0,.14,L*.33,.07,.05,.18,metal);box(g,0,.11,L*.7,.07,.05,.07,metal);if(type==='smg'){box(g,0,-.13,L*.38,.14,.28,.13,metal);cyl(g,0,-.28,L*.38,.08,.08,.25,metal,10).rotation.x=Math.PI/2}else if(type==='lmg'){box(g,0,-.2,L*.34,.13,.26,.45,metal);box(g,0,-.32,L*.6,.04,.28,.1,metal);for(let s of [-1,1]){const bip=mesh(new THREE.CylinderGeometry(.025,.025,.4,6),metal,s*.08,-.38,L*.66);bip.rotation.z=s*.2}}else if(type==='sniper'){const scope=cyl(g,0,.2,L*.4,.07,.07,.48,metal,12);scope.rotation.x=Math.PI/2;box(g,0,.28,L*.4,.14,.08,.22,metal)}else{box(g,0,-.17,L*.34,.11,.25,.18,metal)}return g}
-const weapons=[{id:'rifle',name:'M1 GARAND',cost:0,mag:8,reserve:96,rate:3.5,damage:38},{id:'smg',name:'THOMPSON M1A1',cost:150,mag:30,reserve:150,rate:11,damage:19},{id:'lmg',name:'BROWNING M1918',cost:240,mag:20,reserve:160,rate:9,damage:23},{id:'sniper',name:'SPRINGFIELD M1903',cost:200,mag:5,reserve:45,rate:1.5,damage:85}];
-let current=0,mag=8,reserve=96,owned=new Set([0]),coins=120,hp=100,usaScore=0,axisScore=0,playing=false,locked=false,aim=false,firing=false,reloading=false,reloadT=0,fireT=0,elapsed=0,sector=1,moveSpeed=9,vy=0,onGround=true;
-const player=new THREE.Group();scene.add(player);player.position.set(0,0,20);player.add(camera);camera.position.set(0,1.68,0);let yaw=0,pitch=0;player.rotation.y=yaw;
-const view=new THREE.Group();camera.add(view);view.position.set(.36,-.31,-.62);
-const gunHolder=new THREE.Group();view.add(gunHolder);let gun=null,leftHand=null,rounds=[],reloadParts=[];function buildGun(){while(gunHolder.children.length)gunHolder.remove(gunHolder.children[0]);gun=weaponModel(weapons[current].id,gunHolder);gun.position.set(.08,-.02,-.05);gun.rotation.y=Math.PI;gun.scale.set(.8,.8,.8);leftHand=sphere(gunHolder,-.22,-.2,.12,.105,.13,.12,M.skin);const sleeve=mesh(new THREE.CapsuleGeometry(.11,.27,4,8),M.usa,-.22,-.08,.1,gunHolder);sleeve.rotation.x=.3;leftHand.visible=false;sleeve.visible=false;reloadParts=[leftHand,sleeve];rounds=[];for(let i=0;i<5;i++){const r=cyl(gunHolder,-.2,-.2,.05,.025,.025,.13,M.brass,8);r.rotation.x=Math.PI/2;r.visible=false;rounds.push(r)}updateHud()}
-buildGun();
-const enemies=[],allies=[],bullets=[],effects=[],obstacles=[];
-function addObstacle(o,r){obstacles.push({obj:o,r})}
-function addHuman(team,x,z){const h=human(team,x,z);(team===0?allies:enemies).push(h);return h}
-for(let i=0;i<50;i++){const a=Math.random()*Math.PI*2,r=45+Math.random()*260;const x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<22&&z>0&&z<55)continue;if(Math.random()<.66)tree(x,z,.65+Math.random()*.9);else bush(x,z,.8+Math.random()*1.2)}
-for(let i=0;i<25;i++){const x=(Math.random()-.5)*420,z=(Math.random()-.5)*420;if(Math.abs(x)<40&&Math.abs(z)<40)continue;if(i%3===0)house(x,z,i%2===0);else if(i%3===1)crate(x,z);else bunker(x,z)}
-for(let i=0;i<24;i++){const x=(Math.random()-.5)*330,z=(Math.random()-.5)*330;if(Math.abs(x)<25&&Math.abs(z)<25)continue;if(i%2===0)tank(x,z,i%4===0?1:0,i%3===0);else artillery(x,z)}
-for(let i=0;i<12;i++){const x=(Math.random()-.5)*280,z=(Math.random()-.5)*280;wire(x,z,7+Math.floor(Math.random()*6))}
-for(let i=0;i<34;i++){let x,z;do{x=(Math.random()-.5)*220;z=(Math.random()-.5)*220}while(Math.hypot(x,z)<28);addHuman(i<17?0:1,x,z)}
-// cinematic dirt haze, sunlit dust
-const dustMat=new THREE.MeshBasicMaterial({color:0xd3c5a0,transparent:true,opacity:.12,depthWrite:false});
-for(let i=0;i<70;i++){const d=sphere(scene,(Math.random()-.5)*300,.3+Math.random()*5,(Math.random()-.5)*300,.035,.035,.035,dustMat);d.userData.dust=true;effects.push(d)}
-function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').style.opacity=0,1500)}
-function updateHud(){$('ammo').innerHTML=mag+' <small>/ '+reserve+'</small>';$('weapon').textContent=weapons[current].name;$('coins').textContent=coins;$('shopcoins').textContent=coins;$('hp').textContent=hp;$('health').firstElementChild.style.width=hp+'%';$('score').textContent='USA '+String(usaScore).padStart(3,'0')+' — '+String(axisScore).padStart(3,'0')+' AXIS';$('sector').textContent='SECTOR '+String(sector).padStart(2,'0')}
-function particles(pos,color,count=8){for(let i=0;i<count;i++){const o=mesh(new THREE.SphereGeometry(.035+Math.random()*.035,5,5),mat(color,.6),pos.x,pos.y,pos.z);o.userData={life:.35+Math.random()*.4,vel:new THREE.Vector3((Math.random()-.5)*4,Math.random()*4,(Math.random()-.5)*4),fx:true};effects.push(o)}}
-function tracer(a,b,color=0xe7c987){const d=new THREE.Vector3().subVectors(b,a),o=mesh(new THREE.CylinderGeometry(.018,.018,d.length(),5),new THREE.MeshBasicMaterial({color,transparent:true,opacity:.85}),...a.clone().add(b).multiplyScalar(.5).toArray());o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());o.userData={life:.085,fx:true};effects.push(o)}
-function shoot(from,target,team,damage=20){tracer(from,target,team===0?0xe9d29b:0xd27a55);const dir=new THREE.Vector3().subVectors(target,from).normalize();const ray=new THREE.Raycaster(from,dir,0,from.distanceTo(target)+1);const candidates=(team===0?enemies:allies).filter(h=>!h.userData.dead);const hits=ray.intersectObjects(candidates,true);if(hits.length){let obj=hits[0].object;while(obj.parent&&obj.userData.team===undefined&&!obj.userData.player)obj=obj.parent;if(obj.userData.team!==undefined&&!obj.userData.dead){obj.userData.hp-=damage;particles(hits[0].point,0x873a2e,7);if(obj.userData.hp<=0){obj.userData.dead=true;obj.userData.deadT=0;obj.rotation.z=(Math.random()-.5)*1.5;obj.position.y-=.25;if(team===0){coins+=35;usaScore++;toast('ENEMY ELIMINATED  +35 WAR BONDS')}else axisScore++;updateHud()}}}
-}
-function playerShoot(){if(!playing||reloading||mag<=0)return;mag--;fireT=1/weapons[current].rate;const origin=new THREE.Vector3();camera.getWorldPosition(origin);const dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);const target=origin.clone().add(dir.multiplyScalar(220));shoot(origin,target,0,weapons[current].damage);particles(origin.clone().add(dir.clone().multiplyScalar(.8)),0xffd18b,3);gun.position.z=-.05+Math.random()*.04;updateHud()}
-function startReload(){if(reloading||mag===weapons[current].mag||reserve<=0)return;reloading=true;reloadT=0;firing=false;leftHand.visible=true;gun.position.y=-.17;for(const r of rounds)r.visible=false;toast('RELOADING')}
-function finishReload(){const need=weapons[current].mag-mag,load=Math.min(need,reserve);mag+=load;reserve-=load;reloading=false;leftHand.visible=false;reloadParts[1].visible=false;gun.position.y=-.02;updateHud()}
-const keys={};addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyR')startReload();if(e.code==='KeyB'&&playing)openShop();if(e.code.startsWith('Digit')){const n=+e.code.slice(5)-1;if(owned.has(n)&&n<weapons.length){current=n;mag=weapons[n].mag;reserve=weapons[n].reserve;buildGun()}}if(e.code==='Space'&&onGround&&playing){vy=8.5;onGround=false} });addEventListener('keyup',e=>keys[e.code]=false);
-addEventListener('mousemove',e=>{if(!locked||!playing)return;yaw-=e.movementX*.0022;pitch-=e.movementY*.0022;pitch=Math.max(-1.35,Math.min(1.25,pitch));player.rotation.y=yaw;camera.rotation.x=pitch});
-addEventListener('mousedown',e=>{if(!playing)return;if(e.button===0){firing=true;if(!locked)renderer.domElement.requestPointerLock()}if(e.button===2)aim=true});addEventListener('mouseup',e=>{if(e.button===0)firing=false;if(e.button===2)aim=false});addEventListener('contextmenu',e=>e.preventDefault());document.addEventListener('pointerlockchange',()=>locked=document.pointerLockElement===renderer.domElement);
-$('start').onclick=()=>{$('overlay').style.display='none';playing=true;renderer.domElement.requestPointerLock();toast('MOVE OUT!')};
-function openShop(){firing=false;aim=false;$('shop').style.display='grid';document.exitPointerLock?.();const el=$('guns');el.innerHTML='';weapons.forEach((w,i)=>{const d=document.createElement('div');d.className='gun';d.innerHTML='<strong>'+w.name+(owned.has(i)?' ✓':'')+'</strong><small>'+w.mag+' round magazine · '+Math.round(w.rate)+' rounds/sec</small><em>'+(owned.has(i)?'OWNED':w.cost+' BONDS')+'</em>';d.onclick=()=>{if(owned.has(i)){current=i;mag=w.mag;reserve=w.reserve;buildGun();$('shop').style.display='none';renderer.domElement.requestPointerLock()}else if(coins>=w.cost){coins-=w.cost;owned.add(i);current=i;mag=w.mag;reserve=w.reserve;buildGun();updateHud();$('shop').style.display='none';renderer.domElement.requestPointerLock();toast('WEAPON ACQUIRED')}};el.appendChild(d)})}
-$('closeShop').onclick=()=>{$('shop').style.display='none';if(playing)renderer.domElement.requestPointerLock()};
-const clock=new THREE.Clock();let step=0,enemyFire=0;
-function tickAI(dt){for(const h of [...allies,...enemies]){const u=h.userData;if(u.dead){u.deadT+=dt;h.rotation.x=Math.min(1.5,u.deadT*2);h.position.y-=dt*.3;continue}const targets=u.team===0?enemies:allies;let target=null,best=85;for(const t of targets){if(t.userData.dead)continue;const d=h.position.distanceTo(t.position);if(d<best){best=d;target=t}}if(!target&&u.team===1){const d=h.position.distanceTo(player.position);if(d<50)target=player}if(target&&best<85){h.lookAt(target.position.x,h.position.y,target.position.z);u.cd-=dt;if(u.cd<=0){const from=h.position.clone().add(new THREE.Vector3(0,1.6,0));const to=target===player?player.position.clone().add(new THREE.Vector3(0,1,0)):target.position.clone().add(new THREE.Vector3(0,1.4,0));shoot(from,to,u.team,u.team===1?7:4);u.cd=(u.team===0?1.8:1.3)+Math.random()*.9;if(target===player&&u.team===1){hp=Math.max(0,hp-4);$('damage').style.opacity=.18;setTimeout(()=>$('damage').style.opacity=0,100);updateHud();if(hp===0){hp=100;player.position.set(0,0,20);coins=Math.max(0,coins-25);toast('YOU WERE WOUNDED · -25 BONDS');updateHud()}}}}else{u.phase+=dt;h.position.x+=Math.sin(u.phase*.6)*dt*.7;h.position.z+=Math.cos(u.phase*.5)*dt*.7}const y=terrainY(h.position.x,h.position.z);h.position.y=Math.max(y,u.dead?y-.25:y);for(const l of h.userData.legs||[])l.rotation.x=Math.sin(elapsed*7+u.phase)*.08}}
-function movePlayer(dt){if(!playing||$('shop').style.display==='grid')return;const f=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),r=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));const v=new THREE.Vector3();if(keys.KeyW)v.add(f);if(keys.KeyS)v.sub(f);if(keys.KeyD)v.add(r);if(keys.KeyA)v.sub(r);if(v.lengthSq())v.normalize().multiplyScalar((keys.ShiftLeft?13:9)*dt);player.position.add(v);vy-=20*dt;player.position.y+=vy*dt;const gy=terrainY(player.position.x,player.position.z);if(player.position.y<gy){player.position.y=gy;vy=0;onGround=true}else onGround=false;player.position.x=THREE.MathUtils.clamp(player.position.x,-700,700);player.position.z=THREE.MathUtils.clamp(player.position.z,-700,700);const sway=v.lengthSq()?Math.sin(elapsed*10)*.012:0;view.position.x=THREE.MathUtils.damp(view.position.x,.36+sway,8,dt);view.position.y=THREE.MathUtils.damp(view.position.y,-.31+Math.abs(sway)*.6,8,dt)}
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);elapsed+=dt;if(playing){movePlayer(dt);tickAI(dt);if(fireT>0)fireT-=dt;if(firing&&fireT<=0)playerShoot();if(reloading){reloadT+=dt;gun.position.y=-.02-.22*Math.sin(Math.min(1,reloadT/1.25)*Math.PI);reloadParts[1].visible=reloadT>.12&&reloadT<.9;rounds.forEach((r,i)=>{r.visible=reloadT>.18+i*.13&&reloadT<.32+i*.13;r.position.y=-.2+Math.max(0,Math.min(1,(reloadT-(.18+i*.13))/.12))*.09});if(reloadT>1.3)finishReload()}const targetFov=aim?48:76;camera.fov=THREE.MathUtils.damp(camera.fov,targetFov,9,dt);camera.updateProjectionMatrix();}for(let i=effects.length-1;i>=0;i--){const o=effects[i];if(o.userData.dust){o.position.y+=Math.sin(elapsed+i)*dt*.08;continue}if(o.userData.life!==undefined){o.userData.life-=dt;if(o.userData.vel){o.position.addScaledVector(o.userData.vel,dt);o.userData.vel.y-=7*dt}if(o.userData.life<=0){scene.remove(o);effects.splice(i,1)}}}renderer.render(scene,camera)}
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.7))});
-updateHud();animate();
-})();
-</script>
-</body></html>
+  <div id="game-ui">
+    <div class="topline">
+      <div class="brand">IRON <span>FRONT</span></div>
+      <div class="date-label">WESTERN EUROPE · 1944</div>
+      <div id="match-score" class="match-score">ALLIES 000 — 000 AXIS</div>
+      <div id="sector" class="sector">SECTOR 01</div>
+    </div>
+    <div class="crosshair" id="crosshair"><i></i><i></i><i></i><i></i></div>
+    <div class="hitmarker" id="hitmarker"></div>
+    <div class="toast" id="toast"></div>
+    <div class="damage-vignette" id="damage-vignette"></div>
+    <div class="bottom-left">
+      <div class="hud-card">
+        <div class="hud-label">AMMUNITION</div>
+        <div class="ammo-line"><span id="ammo-count" class="ammo-count">8</span><span id="ammo-reserve" class="ammo-reserve">/ 96</span></div>
+        <div class="weapon-name" id="weapon-name">M1 GARAND</div>
+        <div class="health-track"><div class="health-fill" id="health-fill"></div></div>
+      </div>
+      <div class="hud-card stats-card">
+        <div class="hud-label">STATUS <b id="health-number">100</b></div>
+        <div>WAR BONDS <b id="coins">200</b></div>
+        <div>CONFIRMED <b id="kills">000</b></div>
+      </div>
+    </div>
+    <div class="controls-hint">
+      <div><span>W A S D</span> &nbsp; MOVE</div><div><span>SHIFT</span> &nbsp; SPRINT</div>
+      <div><span>SPACE</span> &nbsp; JUMP</div><div><span>R</span> &nbsp; RELOAD</div>
+      <div><span>B</span> &nbsp; FIELD ARMORY</div><div><span>RMB</span> &nbsp; AIM</div><div><span>LMB</span> &nbsp; FIRE</div>
+    </div>
+  </div>
+  <section id="start-screen" class="overlay">
+    <div class="menu-card">
+      <div class="eyebrow">ALLIED EXPEDITIONARY FORCE · 1944</div>
+      <h1 class="game-title">IRON<br><span>FRONT</span></h1>
+      <p class="menu-copy">The front line is breaking. Advance through a war-torn French village, fight alongside allied infantry, and clear the enemy positions. Watch your ammunition, use cover, and keep moving.</p>
+      <div class="operation">OPERATION: BROKEN HEDGE</div>
+      <button id="deploy-button" class="primary-button">DEPLOY TO FRONT <span>↗</span></button>
+      <div class="key-grid">
+        <div><b>W A S D</b> Move</div><div><b>SPACE</b> Jump</div>
+        <div><b>LEFT MOUSE</b> Fire</div><div><b>RIGHT MOUSE</b> Aim</div>
+        <div><b>R</b> Reload</div><div><b>B</b> Field armory</div>
+        <div><b>SHIFT</b> Sprint</div><div><b>ESC</b> Release mouse</div>
+      </div>
+    </div>
+  </section>
+  <section id="shop-screen" class="overlay shop-overlay">
+    <div class="shop-card">
+      <div class="shop-header">
+        <div><div class="eyebrow">QUARTERMASTER · SUPPLY DEPOT</div><h2>FIELD ARMORY</h2></div>
+        <div class="wallet">WAR BONDS<br><strong id="shop-coins">200</strong></div>
+      </div>
+      <p class="menu-copy">Purchase a weapon or equip one you already own. Eliminating enemies earns additional war bonds.</p>
+      <div id="weapon-grid" class="weapon-grid"></div>
+      <div class="shop-footer"><div id="shop-message" class="hud-label">SELECT A WEAPON</div><button id="close-shop" class="secondary-button">RETURN TO BATTLE [B]</button></div>
+    </div>
+  </section>
+</body>
+</html>
