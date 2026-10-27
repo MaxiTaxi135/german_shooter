@@ -8,6 +8,7 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
   let toastTimer = null;
   let hitTimer = null;
   let damageTimer = null;
+  let lastHud = { health: 100, sector: 1, alliesScore: 0, enemyScore: 0 };
 
   el("deploy-button").addEventListener("click", onStart);
   el("close-shop").addEventListener("click", onShopClose);
@@ -32,6 +33,7 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
   }
 
   function update(inventory, health, sector = 1, alliesScore = 0, enemyScore = 0) {
+    lastHud = { health, sector, alliesScore, enemyScore };
     const weapon = inventory.current;
     el("ammo-count").textContent = weapon.ammo;
     el("ammo-reserve").textContent = "/ " + weapon.reserveAmmo;
@@ -70,7 +72,7 @@ export function createUI({ onStart, onPurchase, onShopClose }) {
         el("shop-message").textContent = result.message || "UPDATED";
         if (result.ok) {
           renderShop(inventory);
-          update(inventory, window.gameHealth ?? 100);
+          update(inventory, lastHud.health, lastHud.sector, lastHud.alliesScore, lastHud.enemyScore);
           toast(result.message, 1200);
         } else {
           toast(result.message || "UNAVAILABLE", 1300);
